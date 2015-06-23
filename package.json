@@ -22,7 +22,8 @@
   "scripts": {
     "test": "make test"
   },
-  "dependencies": {},
+  "dependencies": {
+  },
   "devDependencies": {
     "duo": "^0.12.0",
     "duo-test": "^0.4.0",

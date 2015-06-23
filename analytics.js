@@ -4,7 +4,7 @@
   } else if ('function' == typeof define && (define.amd || define.cmd)) {
     define(function(){ return require('1'); });
   } else {
-    this['analytics'] = require('1');
+    this['fedoraAnalytics'] = require('1');
   }
 })((function outer(modules, cache, entries){
 
@@ -997,12 +997,11 @@ Facade.Screen = require('./screen');
 }, {"./facade":29,"./alias":30,"./group":31,"./identify":32,"./track":33,"./page":34,"./screen":35}],
 29: [function(require, module, exports) {
 
-var traverse = require('isodate-traverse');
-var isEnabled = require('./is-enabled');
 var clone = require('./utils').clone;
 var type = require('./utils').type;
-var address = require('./address');
+var isEnabled = require('./is-enabled');
 var objCase = require('obj-case');
+var traverse = require('isodate-traverse');
 var newDate = require('new-date');
 
 /**
@@ -1023,12 +1022,6 @@ function Facade (obj) {
   traverse(obj);
   this.obj = obj;
 }
-
-/**
- * Mixin address traits.
- */
-
-address(Facade.prototype);
 
 /**
  * Return a proxy function for a `field` that will attempt to first use methods,
@@ -1305,398 +1298,8 @@ function transform(obj){
   return cloned;
 }
 
-}, {"isodate-traverse":36,"./is-enabled":37,"./utils":38,"./address":39,"obj-case":40,"new-date":41}],
+}, {"./utils":36,"./is-enabled":37,"obj-case":38,"isodate-traverse":39,"new-date":40}],
 36: [function(require, module, exports) {
-
-var is = require('is');
-var isodate = require('isodate');
-var each;
-
-try {
-  each = require('each');
-} catch (err) {
-  each = require('each-component');
-}
-
-/**
- * Expose `traverse`.
- */
-
-module.exports = traverse;
-
-/**
- * Traverse an object or array, and return a clone with all ISO strings parsed
- * into Date objects.
- *
- * @param {Object} obj
- * @return {Object}
- */
-
-function traverse (input, strict) {
-  if (strict === undefined) strict = true;
-
-  if (is.object(input)) return object(input, strict);
-  if (is.array(input)) return array(input, strict);
-  return input;
-}
-
-/**
- * Object traverser.
- *
- * @param {Object} obj
- * @param {Boolean} strict
- * @return {Object}
- */
-
-function object (obj, strict) {
-  each(obj, function (key, val) {
-    if (isodate.is(val, strict)) {
-      obj[key] = isodate.parse(val);
-    } else if (is.object(val) || is.array(val)) {
-      traverse(val, strict);
-    }
-  });
-  return obj;
-}
-
-/**
- * Array traverser.
- *
- * @param {Array} arr
- * @param {Boolean} strict
- * @return {Array}
- */
-
-function array (arr, strict) {
-  each(arr, function (val, x) {
-    if (is.object(val)) {
-      traverse(val, strict);
-    } else if (isodate.is(val, strict)) {
-      arr[x] = isodate.parse(val);
-    }
-  });
-  return arr;
-}
-
-}, {"is":42,"isodate":43,"each":4}],
-42: [function(require, module, exports) {
-
-var isEmpty = require('is-empty');
-
-try {
-  var typeOf = require('type');
-} catch (e) {
-  var typeOf = require('component-type');
-}
-
-
-/**
- * Types.
- */
-
-var types = [
-  'arguments',
-  'array',
-  'boolean',
-  'date',
-  'element',
-  'function',
-  'null',
-  'number',
-  'object',
-  'regexp',
-  'string',
-  'undefined'
-];
-
-
-/**
- * Expose type checkers.
- *
- * @param {Mixed} value
- * @return {Boolean}
- */
-
-for (var i = 0, type; type = types[i]; i++) exports[type] = generate(type);
-
-
-/**
- * Add alias for `function` for old browsers.
- */
-
-exports.fn = exports['function'];
-
-
-/**
- * Expose `empty` check.
- */
-
-exports.empty = isEmpty;
-
-
-/**
- * Expose `nan` check.
- */
-
-exports.nan = function (val) {
-  return exports.number(val) && val != val;
-};
-
-
-/**
- * Generate a type checker.
- *
- * @param {String} type
- * @return {Function}
- */
-
-function generate (type) {
-  return function (value) {
-    return type === typeOf(value);
-  };
-}
-}, {"is-empty":44,"type":45,"component-type":45}],
-44: [function(require, module, exports) {
-
-/**
- * Expose `isEmpty`.
- */
-
-module.exports = isEmpty;
-
-
-/**
- * Has.
- */
-
-var has = Object.prototype.hasOwnProperty;
-
-
-/**
- * Test whether a value is "empty".
- *
- * @param {Mixed} val
- * @return {Boolean}
- */
-
-function isEmpty (val) {
-  if (null == val) return true;
-  if ('number' == typeof val) return 0 === val;
-  if (undefined !== val.length) return 0 === val.length;
-  for (var key in val) if (has.call(val, key)) return false;
-  return true;
-}
-}, {}],
-45: [function(require, module, exports) {
-/**
- * toString ref.
- */
-
-var toString = Object.prototype.toString;
-
-/**
- * Return the type of `val`.
- *
- * @param {Mixed} val
- * @return {String}
- * @api public
- */
-
-module.exports = function(val){
-  switch (toString.call(val)) {
-    case '[object Date]': return 'date';
-    case '[object RegExp]': return 'regexp';
-    case '[object Arguments]': return 'arguments';
-    case '[object Array]': return 'array';
-    case '[object Error]': return 'error';
-  }
-
-  if (val === null) return 'null';
-  if (val === undefined) return 'undefined';
-  if (val !== val) return 'nan';
-  if (val && val.nodeType === 1) return 'element';
-
-  val = val.valueOf
-    ? val.valueOf()
-    : Object.prototype.valueOf.apply(val)
-
-  return typeof val;
-};
-
-}, {}],
-43: [function(require, module, exports) {
-
-/**
- * Matcher, slightly modified from:
- *
- * https://github.com/csnover/js-iso8601/blob/lax/iso8601.js
- */
-
-var matcher = /^(\d{4})(?:-?(\d{2})(?:-?(\d{2}))?)?(?:([ T])(\d{2}):?(\d{2})(?::?(\d{2})(?:[,\.](\d{1,}))?)?(?:(Z)|([+\-])(\d{2})(?::?(\d{2}))?)?)?$/;
-
-
-/**
- * Convert an ISO date string to a date. Fallback to native `Date.parse`.
- *
- * https://github.com/csnover/js-iso8601/blob/lax/iso8601.js
- *
- * @param {String} iso
- * @return {Date}
- */
-
-exports.parse = function (iso) {
-  var numericKeys = [1, 5, 6, 7, 11, 12];
-  var arr = matcher.exec(iso);
-  var offset = 0;
-
-  // fallback to native parsing
-  if (!arr) return new Date(iso);
-
-  // remove undefined values
-  for (var i = 0, val; val = numericKeys[i]; i++) {
-    arr[val] = parseInt(arr[val], 10) || 0;
-  }
-
-  // allow undefined days and months
-  arr[2] = parseInt(arr[2], 10) || 1;
-  arr[3] = parseInt(arr[3], 10) || 1;
-
-  // month is 0-11
-  arr[2]--;
-
-  // allow abitrary sub-second precision
-  arr[8] = arr[8]
-    ? (arr[8] + '00').substring(0, 3)
-    : 0;
-
-  // apply timezone if one exists
-  if (arr[4] == ' ') {
-    offset = new Date().getTimezoneOffset();
-  } else if (arr[9] !== 'Z' && arr[10]) {
-    offset = arr[11] * 60 + arr[12];
-    if ('+' == arr[10]) offset = 0 - offset;
-  }
-
-  var millis = Date.UTC(arr[1], arr[2], arr[3], arr[5], arr[6] + offset, arr[7], arr[8]);
-  return new Date(millis);
-};
-
-
-/**
- * Checks whether a `string` is an ISO date string. `strict` mode requires that
- * the date string at least have a year, month and date.
- *
- * @param {String} string
- * @param {Boolean} strict
- * @return {Boolean}
- */
-
-exports.is = function (string, strict) {
-  if (strict && false === /^\d{4}-\d{2}-\d{2}/.test(string)) return false;
-  return matcher.test(string);
-};
-}, {}],
-4: [function(require, module, exports) {
-
-/**
- * Module dependencies.
- */
-
-var type = require('type');
-
-/**
- * HOP reference.
- */
-
-var has = Object.prototype.hasOwnProperty;
-
-/**
- * Iterate the given `obj` and invoke `fn(val, i)`.
- *
- * @param {String|Array|Object} obj
- * @param {Function} fn
- * @api public
- */
-
-module.exports = function(obj, fn){
-  switch (type(obj)) {
-    case 'array':
-      return array(obj, fn);
-    case 'object':
-      if ('number' == typeof obj.length) return array(obj, fn);
-      return object(obj, fn);
-    case 'string':
-      return string(obj, fn);
-  }
-};
-
-/**
- * Iterate string chars.
- *
- * @param {String} obj
- * @param {Function} fn
- * @api private
- */
-
-function string(obj, fn) {
-  for (var i = 0; i < obj.length; ++i) {
-    fn(obj.charAt(i), i);
-  }
-}
-
-/**
- * Iterate object keys.
- *
- * @param {Object} obj
- * @param {Function} fn
- * @api private
- */
-
-function object(obj, fn) {
-  for (var key in obj) {
-    if (has.call(obj, key)) {
-      fn(key, obj[key]);
-    }
-  }
-}
-
-/**
- * Iterate array-ish.
- *
- * @param {Array|Object} obj
- * @param {Function} fn
- * @api private
- */
-
-function array(obj, fn) {
-  for (var i = 0; i < obj.length; ++i) {
-    fn(obj[i], i);
-  }
-}
-}, {"type":45}],
-37: [function(require, module, exports) {
-
-/**
- * A few integrations are disabled by default. They must be explicitly
- * enabled by setting options[Provider] = true.
- */
-
-var disabled = {
-  Salesforce: true
-};
-
-/**
- * Check whether an integration should be enabled by default.
- *
- * @param {String} integration
- * @return {Boolean}
- */
-
-module.exports = function (integration) {
-  return ! disabled[integration];
-};
-}, {}],
-38: [function(require, module, exports) {
 
 /**
  * TODO: use component symlink, everywhere ?
@@ -1712,8 +1315,8 @@ try {
   exports.type = require('type-component');
 }
 
-}, {"inherit":46,"clone":47,"type":45}],
-46: [function(require, module, exports) {
+}, {"inherit":41,"clone":42,"type":43}],
+41: [function(require, module, exports) {
 
 module.exports = function(a, b){
   var fn = function(){};
@@ -1722,7 +1325,7 @@ module.exports = function(a, b){
   a.prototype.constructor = a;
 };
 }, {}],
-47: [function(require, module, exports) {
+42: [function(require, module, exports) {
 /**
  * Module dependencies.
  */
@@ -1781,47 +1384,67 @@ function clone(obj){
   }
 }
 
-}, {"component-type":45,"type":45}],
-39: [function(require, module, exports) {
-
+}, {"component-type":43,"type":43}],
+43: [function(require, module, exports) {
 /**
- * Module dependencies.
+ * toString ref.
  */
 
-var get = require('obj-case');
+var toString = Object.prototype.toString;
 
 /**
- * Add address getters to `proto`.
+ * Return the type of `val`.
  *
- * @param {Function} proto
+ * @param {Mixed} val
+ * @return {String}
+ * @api public
  */
 
-module.exports = function(proto){
-  proto.zip = trait('postalCode', 'zip');
-  proto.country = trait('country');
-  proto.street = trait('street');
-  proto.state = trait('state');
-  proto.city = trait('city');
-
-  function trait(a, b){
-    return function(){
-      var traits = this.traits();
-      var props = this.properties ? this.properties() : {};
-
-      return get(traits, 'address.' + a)
-        || get(traits, a)
-        || (b ? get(traits, 'address.' + b) : null)
-        || (b ? get(traits, b) : null)
-        || get(props, 'address.' + a)
-        || get(props, a)
-        || (b ? get(props, 'address.' + b) : null)
-        || (b ? get(props, b) : null);
-    };
+module.exports = function(val){
+  switch (toString.call(val)) {
+    case '[object Date]': return 'date';
+    case '[object RegExp]': return 'regexp';
+    case '[object Arguments]': return 'arguments';
+    case '[object Array]': return 'array';
+    case '[object Error]': return 'error';
   }
+
+  if (val === null) return 'null';
+  if (val === undefined) return 'undefined';
+  if (val !== val) return 'nan';
+  if (val && val.nodeType === 1) return 'element';
+
+  val = val.valueOf
+    ? val.valueOf()
+    : Object.prototype.valueOf.apply(val)
+
+  return typeof val;
 };
 
-}, {"obj-case":40}],
-40: [function(require, module, exports) {
+}, {}],
+37: [function(require, module, exports) {
+
+/**
+ * A few integrations are disabled by default. They must be explicitly
+ * enabled by setting options[Provider] = true.
+ */
+
+var disabled = {
+  Salesforce: true
+};
+
+/**
+ * Check whether an integration should be enabled by default.
+ *
+ * @param {String} integration
+ * @return {Boolean}
+ */
+
+module.exports = function (integration) {
+  return ! disabled[integration];
+};
+}, {}],
+38: [function(require, module, exports) {
 
 var identity = function(_){ return _; };
 
@@ -1976,7 +1599,338 @@ function isFunction(val) {
 }
 
 }, {}],
-41: [function(require, module, exports) {
+39: [function(require, module, exports) {
+
+var is = require('is');
+var isodate = require('isodate');
+var each;
+
+try {
+  each = require('each');
+} catch (err) {
+  each = require('each-component');
+}
+
+/**
+ * Expose `traverse`.
+ */
+
+module.exports = traverse;
+
+/**
+ * Traverse an object or array, and return a clone with all ISO strings parsed
+ * into Date objects.
+ *
+ * @param {Object} obj
+ * @return {Object}
+ */
+
+function traverse (input, strict) {
+  if (strict === undefined) strict = true;
+
+  if (is.object(input)) return object(input, strict);
+  if (is.array(input)) return array(input, strict);
+  return input;
+}
+
+/**
+ * Object traverser.
+ *
+ * @param {Object} obj
+ * @param {Boolean} strict
+ * @return {Object}
+ */
+
+function object (obj, strict) {
+  each(obj, function (key, val) {
+    if (isodate.is(val, strict)) {
+      obj[key] = isodate.parse(val);
+    } else if (is.object(val) || is.array(val)) {
+      traverse(val, strict);
+    }
+  });
+  return obj;
+}
+
+/**
+ * Array traverser.
+ *
+ * @param {Array} arr
+ * @param {Boolean} strict
+ * @return {Array}
+ */
+
+function array (arr, strict) {
+  each(arr, function (val, x) {
+    if (is.object(val)) {
+      traverse(val, strict);
+    } else if (isodate.is(val, strict)) {
+      arr[x] = isodate.parse(val);
+    }
+  });
+  return arr;
+}
+
+}, {"is":44,"isodate":45,"each":4}],
+44: [function(require, module, exports) {
+
+var isEmpty = require('is-empty');
+
+try {
+  var typeOf = require('type');
+} catch (e) {
+  var typeOf = require('component-type');
+}
+
+
+/**
+ * Types.
+ */
+
+var types = [
+  'arguments',
+  'array',
+  'boolean',
+  'date',
+  'element',
+  'function',
+  'null',
+  'number',
+  'object',
+  'regexp',
+  'string',
+  'undefined'
+];
+
+
+/**
+ * Expose type checkers.
+ *
+ * @param {Mixed} value
+ * @return {Boolean}
+ */
+
+for (var i = 0, type; type = types[i]; i++) exports[type] = generate(type);
+
+
+/**
+ * Add alias for `function` for old browsers.
+ */
+
+exports.fn = exports['function'];
+
+
+/**
+ * Expose `empty` check.
+ */
+
+exports.empty = isEmpty;
+
+
+/**
+ * Expose `nan` check.
+ */
+
+exports.nan = function (val) {
+  return exports.number(val) && val != val;
+};
+
+
+/**
+ * Generate a type checker.
+ *
+ * @param {String} type
+ * @return {Function}
+ */
+
+function generate (type) {
+  return function (value) {
+    return type === typeOf(value);
+  };
+}
+}, {"is-empty":46,"type":43,"component-type":43}],
+46: [function(require, module, exports) {
+
+/**
+ * Expose `isEmpty`.
+ */
+
+module.exports = isEmpty;
+
+
+/**
+ * Has.
+ */
+
+var has = Object.prototype.hasOwnProperty;
+
+
+/**
+ * Test whether a value is "empty".
+ *
+ * @param {Mixed} val
+ * @return {Boolean}
+ */
+
+function isEmpty (val) {
+  if (null == val) return true;
+  if ('number' == typeof val) return 0 === val;
+  if (undefined !== val.length) return 0 === val.length;
+  for (var key in val) if (has.call(val, key)) return false;
+  return true;
+}
+}, {}],
+45: [function(require, module, exports) {
+
+/**
+ * Matcher, slightly modified from:
+ *
+ * https://github.com/csnover/js-iso8601/blob/lax/iso8601.js
+ */
+
+var matcher = /^(\d{4})(?:-?(\d{2})(?:-?(\d{2}))?)?(?:([ T])(\d{2}):?(\d{2})(?::?(\d{2})(?:[,\.](\d{1,}))?)?(?:(Z)|([+\-])(\d{2})(?::?(\d{2}))?)?)?$/;
+
+
+/**
+ * Convert an ISO date string to a date. Fallback to native `Date.parse`.
+ *
+ * https://github.com/csnover/js-iso8601/blob/lax/iso8601.js
+ *
+ * @param {String} iso
+ * @return {Date}
+ */
+
+exports.parse = function (iso) {
+  var numericKeys = [1, 5, 6, 7, 11, 12];
+  var arr = matcher.exec(iso);
+  var offset = 0;
+
+  // fallback to native parsing
+  if (!arr) return new Date(iso);
+
+  // remove undefined values
+  for (var i = 0, val; val = numericKeys[i]; i++) {
+    arr[val] = parseInt(arr[val], 10) || 0;
+  }
+
+  // allow undefined days and months
+  arr[2] = parseInt(arr[2], 10) || 1;
+  arr[3] = parseInt(arr[3], 10) || 1;
+
+  // month is 0-11
+  arr[2]--;
+
+  // allow abitrary sub-second precision
+  arr[8] = arr[8]
+    ? (arr[8] + '00').substring(0, 3)
+    : 0;
+
+  // apply timezone if one exists
+  if (arr[4] == ' ') {
+    offset = new Date().getTimezoneOffset();
+  } else if (arr[9] !== 'Z' && arr[10]) {
+    offset = arr[11] * 60 + arr[12];
+    if ('+' == arr[10]) offset = 0 - offset;
+  }
+
+  var millis = Date.UTC(arr[1], arr[2], arr[3], arr[5], arr[6] + offset, arr[7], arr[8]);
+  return new Date(millis);
+};
+
+
+/**
+ * Checks whether a `string` is an ISO date string. `strict` mode requires that
+ * the date string at least have a year, month and date.
+ *
+ * @param {String} string
+ * @param {Boolean} strict
+ * @return {Boolean}
+ */
+
+exports.is = function (string, strict) {
+  if (strict && false === /^\d{4}-\d{2}-\d{2}/.test(string)) return false;
+  return matcher.test(string);
+};
+}, {}],
+4: [function(require, module, exports) {
+
+/**
+ * Module dependencies.
+ */
+
+var type = require('type');
+
+/**
+ * HOP reference.
+ */
+
+var has = Object.prototype.hasOwnProperty;
+
+/**
+ * Iterate the given `obj` and invoke `fn(val, i)`.
+ *
+ * @param {String|Array|Object} obj
+ * @param {Function} fn
+ * @api public
+ */
+
+module.exports = function(obj, fn){
+  switch (type(obj)) {
+    case 'array':
+      return array(obj, fn);
+    case 'object':
+      if ('number' == typeof obj.length) return array(obj, fn);
+      return object(obj, fn);
+    case 'string':
+      return string(obj, fn);
+  }
+};
+
+/**
+ * Iterate string chars.
+ *
+ * @param {String} obj
+ * @param {Function} fn
+ * @api private
+ */
+
+function string(obj, fn) {
+  for (var i = 0; i < obj.length; ++i) {
+    fn(obj.charAt(i), i);
+  }
+}
+
+/**
+ * Iterate object keys.
+ *
+ * @param {Object} obj
+ * @param {Function} fn
+ * @api private
+ */
+
+function object(obj, fn) {
+  for (var key in obj) {
+    if (has.call(obj, key)) {
+      fn(key, obj[key]);
+    }
+  }
+}
+
+/**
+ * Iterate array-ish.
+ *
+ * @param {Array|Object} obj
+ * @param {Function} fn
+ * @api private
+ */
+
+function array(obj, fn) {
+  for (var i = 0; i < obj.length; ++i) {
+    fn(obj[i], i);
+  }
+}
+}, {"type":43}],
+40: [function(require, module, exports) {
 
 var is = require('is');
 var isodate = require('isodate');
@@ -2016,8 +1970,8 @@ function toMs (num) {
   if (num < 31557600000) return num * 1000;
   return num;
 }
-}, {"is":48,"isodate":43,"./milliseconds":49,"./seconds":50}],
-48: [function(require, module, exports) {
+}, {"is":47,"isodate":45,"./milliseconds":48,"./seconds":49}],
+47: [function(require, module, exports) {
 
 var isEmpty = require('is-empty')
   , typeOf = require('type');
@@ -2088,8 +2042,8 @@ function generate (type) {
     return type === typeOf(value);
   };
 }
-}, {"is-empty":44,"type":45}],
-49: [function(require, module, exports) {
+}, {"is-empty":46,"type":43}],
+48: [function(require, module, exports) {
 
 /**
  * Matcher.
@@ -2122,7 +2076,7 @@ exports.parse = function (millis) {
   return new Date(millis);
 };
 }, {}],
-50: [function(require, module, exports) {
+49: [function(require, module, exports) {
 
 /**
  * Matcher.
@@ -2226,18 +2180,12 @@ Alias.prototype.userId = function(){
     || this.field('to');
 };
 
-}, {"./utils":38,"./facade":29}],
+}, {"./utils":36,"./facade":29}],
 31: [function(require, module, exports) {
 
-/**
- * Module dependencies.
- */
-
 var inherit = require('./utils').inherit;
-var address = require('./address');
-var isEmail = require('is-email');
-var newDate = require('new-date');
 var Facade = require('./facade');
+var newDate = require('new-date');
 
 /**
  * Expose `Group` facade.
@@ -2296,19 +2244,6 @@ Group.prototype.created = function(){
 };
 
 /**
- * Get the group's email, falling back to the group ID if it's a valid email.
- *
- * @return {String}
- */
-
-Group.prototype.email = function () {
-  var email = this.proxy('traits.email');
-  if (email) return email;
-  var groupId = this.groupId();
-  if (isEmail(groupId)) return groupId;
-};
-
-/**
  * Get the group's traits.
  *
  * @param {Object} aliases
@@ -2335,14 +2270,6 @@ Group.prototype.traits = function (aliases) {
 };
 
 /**
- * Special traits.
- */
-
-Group.prototype.name = Facade.proxy('traits.name');
-Group.prototype.industry = Facade.proxy('traits.industry');
-Group.prototype.employees = Facade.proxy('traits.employees');
-
-/**
  * Get traits or properties.
  *
  * TODO: remove me
@@ -2356,37 +2283,9 @@ Group.prototype.properties = function(){
     || {};
 };
 
-}, {"./utils":38,"./address":39,"is-email":51,"new-date":41,"./facade":29}],
-51: [function(require, module, exports) {
-
-/**
- * Expose `isEmail`.
- */
-
-module.exports = isEmail;
-
-
-/**
- * Email address matcher.
- */
-
-var matcher = /.+\@.+\..+/;
-
-
-/**
- * Loosely validate an email address.
- *
- * @param {String} string
- * @return {Boolean}
- */
-
-function isEmail (string) {
-  return matcher.test(string);
-}
-}, {}],
+}, {"./utils":36,"./facade":29,"new-date":40}],
 32: [function(require, module, exports) {
 
-var address = require('./address');
 var Facade = require('./facade');
 var isEmail = require('is-email');
 var newDate = require('new-date');
@@ -2596,16 +2495,12 @@ Identify.prototype.age = function(){
  * .photoUrl needed because help-scout
  * implementation uses `.avatar || .photoUrl`.
  *
- * .avatarUrl needed because trakio uses it.
- *
  * @return {Mixed}
  */
 
 Identify.prototype.avatar = function(){
   var traits = this.traits();
-  return get(traits, 'avatar')
-    || get(traits, 'photoUrl')
-    || get(traits, 'avatarUrl');
+  return get(traits, 'avatar') || get(traits, 'photoUrl');
 };
 
 /**
@@ -2634,8 +2529,35 @@ Identify.prototype.address = Facade.proxy('traits.address');
 Identify.prototype.gender = Facade.proxy('traits.gender');
 Identify.prototype.birthday = Facade.proxy('traits.birthday');
 
-}, {"./address":39,"./facade":29,"is-email":51,"new-date":41,"./utils":38,"obj-case":40,"trim":52}],
-52: [function(require, module, exports) {
+}, {"./facade":29,"is-email":50,"new-date":40,"./utils":36,"obj-case":38,"trim":51}],
+50: [function(require, module, exports) {
+
+/**
+ * Expose `isEmail`.
+ */
+
+module.exports = isEmail;
+
+
+/**
+ * Email address matcher.
+ */
+
+var matcher = /.+\@.+\..+/;
+
+
+/**
+ * Loosely validate an email address.
+ *
+ * @param {String} string
+ * @return {Boolean}
+ */
+
+function isEmail (string) {
+  return matcher.test(string);
+}
+}, {}],
+51: [function(require, module, exports) {
 
 exports = module.exports = trim;
 
@@ -2715,6 +2637,10 @@ Track.prototype.value = Facade.proxy('properties.value');
  */
 
 Track.prototype.category = Facade.proxy('properties.category');
+Track.prototype.country = Facade.proxy('properties.country');
+Track.prototype.state = Facade.proxy('properties.state');
+Track.prototype.city = Facade.proxy('properties.city');
+Track.prototype.zip = Facade.proxy('properties.zip');
 
 /**
  * Ecommerce
@@ -2728,19 +2654,6 @@ Track.prototype.price = Facade.proxy('properties.price');
 Track.prototype.total = Facade.proxy('properties.total');
 Track.prototype.coupon = Facade.proxy('properties.coupon');
 Track.prototype.shipping = Facade.proxy('properties.shipping');
-Track.prototype.discount = Facade.proxy('properties.discount');
-
-/**
- * Description
- */
-
-Track.prototype.description = Facade.proxy('properties.description');
-
-/**
- * Plan
- */
-
-Track.prototype.plan = Facade.proxy('properties.plan');
 
 /**
  * Order id.
@@ -2769,7 +2682,6 @@ Track.prototype.subtotal = function(){
   if (!total) return 0;
   if (n = this.tax()) total -= n;
   if (n = this.shipping()) total -= n;
-  if (n = this.discount()) total += n;
 
   return total;
 };
@@ -2945,7 +2857,7 @@ function currency(val) {
   if (!isNaN(val)) return val;
 }
 
-}, {"./utils":38,"./facade":29,"./identify":32,"is-email":51,"obj-case":40}],
+}, {"./utils":36,"./facade":29,"./identify":32,"is-email":50,"obj-case":38}],
 34: [function(require, module, exports) {
 
 var inherit = require('./utils').inherit;
@@ -2990,28 +2902,11 @@ Page.prototype.action = function(){
 };
 
 /**
- * Fields
+ * Proxies
  */
 
 Page.prototype.category = Facade.field('category');
 Page.prototype.name = Facade.field('name');
-
-/**
- * Proxies.
- */
-
-Page.prototype.title = Facade.proxy('properties.title');
-Page.prototype.path = Facade.proxy('properties.path');
-Page.prototype.url = Facade.proxy('properties.url');
-
-/**
- * Referrer.
- */
-
-Page.prototype.referrer = function(){
-  return this.proxy('properties.referrer')
-    || this.proxy('context.referrer.url');
-};
 
 /**
  * Get the page properties mixing `category` and `name`.
@@ -3071,7 +2966,7 @@ Page.prototype.track = function(name){
   });
 };
 
-}, {"./utils":38,"./facade":29,"./track":33}],
+}, {"./utils":36,"./facade":29,"./track":33}],
 35: [function(require, module, exports) {
 
 var inherit = require('./utils').inherit;
@@ -3148,7 +3043,7 @@ Screen.prototype.track = function(name){
   });
 };
 
-}, {"./utils":38,"./page":34,"./track":33}],
+}, {"./utils":36,"./page":34,"./track":33}],
 8: [function(require, module, exports) {
 
 module.exports = function after (times, func) {
@@ -3209,8 +3104,8 @@ function bindMethods (obj, methods) {
   }
   return obj;
 }
-}, {"bind":53,"bind-all":54}],
-53: [function(require, module, exports) {
+}, {"bind":52,"bind-all":53}],
+52: [function(require, module, exports) {
 /**
  * Slice reference.
  */
@@ -3236,7 +3131,7 @@ module.exports = function(obj, fn){
 };
 
 }, {}],
-54: [function(require, module, exports) {
+53: [function(require, module, exports) {
 
 try {
   var bind = require('bind');
@@ -3253,7 +3148,7 @@ module.exports = function (obj) {
   }
   return obj;
 };
-}, {"bind":53,"type":45}],
+}, {"bind":52,"type":43}],
 10: [function(require, module, exports) {
 var next = require('next-tick');
 
@@ -3297,8 +3192,8 @@ callback.async = function (fn, wait) {
 
 callback.sync = callback;
 
-}, {"next-tick":55}],
-55: [function(require, module, exports) {
+}, {"next-tick":54}],
+54: [function(require, module, exports) {
 "use strict"
 
 if (typeof setImmediate == 'function') {
@@ -3395,7 +3290,7 @@ function clone(obj){
   }
 }
 
-}, {"type":45}],
+}, {"type":43}],
 12: [function(require, module, exports) {
 
 /**
@@ -3530,8 +3425,8 @@ module.exports = bind.all(new Cookie());
 
 module.exports.Cookie = Cookie;
 
-}, {"bind":9,"clone":11,"cookie":56,"debug":13,"defaults":14,"json":57,"top-domain":58}],
-56: [function(require, module, exports) {
+}, {"bind":9,"clone":11,"cookie":55,"debug":13,"defaults":14,"json":56,"top-domain":57}],
+55: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -3663,8 +3558,8 @@ if ('undefined' == typeof window) {
   module.exports = require('./debug');
 }
 
-}, {"./lib/debug":59,"./debug":60}],
-59: [function(require, module, exports) {
+}, {"./lib/debug":58,"./debug":59}],
+58: [function(require, module, exports) {
 /**
  * Module dependencies.
  */
@@ -3814,7 +3709,7 @@ function coerce(val) {
 }
 
 }, {}],
-60: [function(require, module, exports) {
+59: [function(require, module, exports) {
 
 /**
  * Expose `debug()` as the module.
@@ -3983,7 +3878,7 @@ var defaults = function (dest, src, recursive) {
 module.exports = defaults;
 
 }, {}],
-57: [function(require, module, exports) {
+56: [function(require, module, exports) {
 
 var json = window.JSON || {};
 var stringify = json.stringify;
@@ -3993,8 +3888,8 @@ module.exports = parse && stringify
   ? JSON
   : require('json-fallback');
 
-}, {"json-fallback":61}],
-61: [function(require, module, exports) {
+}, {"json-fallback":60}],
+60: [function(require, module, exports) {
 /*
     json2.js
     2014-02-04
@@ -4484,7 +4379,7 @@ module.exports = parse && stringify
 }());
 
 }, {}],
-58: [function(require, module, exports) {
+57: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -4519,9 +4414,9 @@ exports.cookie = cookie;
  *
  *      domain.levels('http://www.google.co.uk');
  *      // => ["co.uk", "google.co.uk", "www.google.co.uk"]
- * 
+ *
  * Example:
- * 
+ *
  *      domain('http://localhost:3000/baz');
  *      // => ''
  *      domain('http://dev:3000/baz');
@@ -4530,7 +4425,7 @@ exports.cookie = cookie;
  *      // => ''
  *      domain('http://segment.io/baz');
  *      // => 'segment.io'
- * 
+ *
  * @param {String} url
  * @return {String}
  * @api public
@@ -4588,8 +4483,8 @@ domain.levels = function(url){
   return levels;
 };
 
-}, {"url":62,"cookie":63}],
-62: [function(require, module, exports) {
+}, {"url":61,"cookie":62}],
+61: [function(require, module, exports) {
 
 /**
  * Parse the given `url`.
@@ -4674,7 +4569,7 @@ function port (protocol){
 }
 
 }, {}],
-63: [function(require, module, exports) {
+62: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -4867,8 +4762,8 @@ module.exports = bind.all(new Group());
 
 module.exports.Group = Group;
 
-}, {"./entity":64,"bind":9,"debug":13,"inherit":65}],
-64: [function(require, module, exports) {
+}, {"./entity":63,"bind":9,"debug":13,"inherit":64}],
+63: [function(require, module, exports) {
 
 var clone = require('clone');
 var cookie = require('./cookie');
@@ -5107,8 +5002,8 @@ Entity.prototype.load = function() {
 };
 
 
-}, {"clone":11,"./cookie":12,"debug":13,"defaults":14,"extend":66,"./memory":19,"./store":26,"isodate-traverse":36}],
-66: [function(require, module, exports) {
+}, {"clone":11,"./cookie":12,"debug":13,"defaults":14,"extend":65,"./memory":19,"./store":26,"isodate-traverse":39}],
+65: [function(require, module, exports) {
 
 module.exports = function extend (object) {
     // Takes an unlimited number of extenders.
@@ -5281,8 +5176,8 @@ module.exports = bind.all(new Store());
 
 module.exports.Store = Store;
 
-}, {"bind":9,"defaults":14,"store.js":67}],
-67: [function(require, module, exports) {
+}, {"bind":9,"defaults":14,"store.js":66}],
+66: [function(require, module, exports) {
 var json             = require('json')
   , store            = {}
   , win              = window
@@ -5434,8 +5329,8 @@ try {
 store.enabled = !store.disabled
 
 module.exports = store;
-}, {"json":57}],
-65: [function(require, module, exports) {
+}, {"json":56}],
+64: [function(require, module, exports) {
 
 module.exports = function(a, b){
   var fn = function(){};
@@ -5520,7 +5415,7 @@ function generate (type) {
     return type === typeOf(value);
   };
 }
-}, {"is-empty":44,"type":45,"component-type":45}],
+}, {"is-empty":46,"type":43,"component-type":43}],
 17: [function(require, module, exports) {
 module.exports = function isMeta (e) {
     if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return true;
@@ -5715,8 +5610,8 @@ function normalize(msg, list){
   }
 }
 
-}, {"debug":13,"defaults":14,"each":4,"includes":68,"is":16,"component/map":69}],
-68: [function(require, module, exports) {
+}, {"debug":13,"defaults":14,"each":4,"includes":67,"is":16,"component/map":68}],
+67: [function(require, module, exports) {
 'use strict';
 
 /**
@@ -5806,8 +5701,8 @@ var includes = function includes(searchElement, collection) {
 
 module.exports = includes;
 
-}, {"each":70}],
-70: [function(require, module, exports) {
+}, {"each":69}],
+69: [function(require, module, exports) {
 'use strict';
 
 /**
@@ -5949,8 +5844,8 @@ var each = function each(iterator, collection) {
 
 module.exports = each;
 
-}, {"keys":71}],
-71: [function(require, module, exports) {
+}, {"keys":70}],
+70: [function(require, module, exports) {
 'use strict';
 
 /**
@@ -6130,7 +6025,7 @@ module.exports = function keys(source) {
 };
 
 }, {}],
-69: [function(require, module, exports) {
+68: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -6155,8 +6050,8 @@ module.exports = function(arr, fn){
   }
   return ret;
 };
-}, {"to-function":72}],
-72: [function(require, module, exports) {
+}, {"to-function":71}],
+71: [function(require, module, exports) {
 
 /**
  * Module Dependencies
@@ -6310,8 +6205,8 @@ function stripNested (prop, str, val) {
   });
 }
 
-}, {"props":73,"component-props":73}],
-73: [function(require, module, exports) {
+}, {"props":72,"component-props":72}],
+72: [function(require, module, exports) {
 /**
  * Global Names
  */
@@ -6505,14 +6400,99 @@ function canonicalUrl(search) {
 
 module.exports = pageDefaults;
 
-}, {"canonical":74,"includes":68,"url":62}],
-74: [function(require, module, exports) {
+}, {"canonical":73,"includes":67,"url":74}],
+73: [function(require, module, exports) {
 module.exports = function canonical () {
   var tags = document.getElementsByTagName('link');
   for (var i = 0, tag; tag = tags[i]; i++) {
     if ('canonical' == tag.getAttribute('rel')) return tag.getAttribute('href');
   }
 };
+}, {}],
+74: [function(require, module, exports) {
+
+/**
+ * Parse the given `url`.
+ *
+ * @param {String} str
+ * @return {Object}
+ * @api public
+ */
+
+exports.parse = function(url){
+  var a = document.createElement('a');
+  a.href = url;
+  return {
+    href: a.href,
+    host: a.host || location.host,
+    port: ('0' === a.port || '' === a.port) ? port(a.protocol) : a.port,
+    hash: a.hash,
+    hostname: a.hostname || location.hostname,
+    pathname: a.pathname.charAt(0) != '/' ? '/' + a.pathname : a.pathname,
+    protocol: !a.protocol || ':' == a.protocol ? location.protocol : a.protocol,
+    search: a.search,
+    query: a.search.slice(1)
+  };
+};
+
+/**
+ * Check if `url` is absolute.
+ *
+ * @param {String} url
+ * @return {Boolean}
+ * @api public
+ */
+
+exports.isAbsolute = function(url){
+  return 0 == url.indexOf('//') || !!~url.indexOf('://');
+};
+
+/**
+ * Check if `url` is relative.
+ *
+ * @param {String} url
+ * @return {Boolean}
+ * @api public
+ */
+
+exports.isRelative = function(url){
+  return !exports.isAbsolute(url);
+};
+
+/**
+ * Check if `url` is cross domain.
+ *
+ * @param {String} url
+ * @return {Boolean}
+ * @api public
+ */
+
+exports.isCrossDomain = function(url){
+  url = exports.parse(url);
+  var location = exports.parse(window.location.href);
+  return url.hostname !== location.hostname
+    || url.port !== location.port
+    || url.protocol !== location.protocol;
+};
+
+/**
+ * Return default port for `protocol`.
+ *
+ * @param  {String} protocol
+ * @return {String}
+ * @api private
+ */
+function port (protocol){
+  switch (protocol) {
+    case 'http:':
+      return 80;
+    case 'https:':
+      return 443;
+    default:
+      return location.port;
+  }
+}
+
 }, {}],
 23: [function(require, module, exports) {
 'use strict';
@@ -6594,14 +6574,14 @@ module.exports = pick;
 
 /**
  * prevent default on the given `e`.
- * 
+ *
  * examples:
- * 
+ *
  *      anchor.onclick = prevent;
  *      anchor.onclick = function(e){
  *        if (something) return prevent(e);
  *      };
- * 
+ *
  * @param {Event} e
  */
 
@@ -6688,7 +6668,7 @@ exports.stringify = function(obj){
   return pairs.join('&');
 };
 
-}, {"trim":52,"type":45}],
+}, {"trim":51,"type":43}],
 27: [function(require, module, exports) {
 
 /**
@@ -6867,7 +6847,7 @@ module.exports = bind.all(new User());
 
 module.exports.User = User;
 
-}, {"./entity":64,"bind":9,"./cookie":12,"debug":13,"inherit":65,"cookie":56,"uuid":75}],
+}, {"./entity":63,"bind":9,"./cookie":12,"debug":13,"inherit":64,"cookie":55,"uuid":75}],
 75: [function(require, module, exports) {
 
 /**
@@ -6988,10 +6968,11 @@ module.exports = {
   'webengage': require('analytics.js-integration-webengage'),
   'woopra': require('analytics.js-integration-woopra'),
   'wootric': require('analytics.js-integration-wootric'),
-  'yandex-metrica': require('analytics.js-integration-yandex-metrica')
+  'yandex-metrica': require('analytics.js-integration-yandex-metrica'),
+  'sumome': require('UseFedora/fedora-analytics.js-integration-sumome')
 };
 
-}, {"analytics.js-integration-adroll":76,"analytics.js-integration-adwords":77,"analytics.js-integration-alexa":78,"analytics.js-integration-amplitude":79,"analytics.js-integration-appcues":80,"analytics.js-integration-atatus":81,"analytics.js-integration-autosend":82,"analytics.js-integration-awesm":83,"analytics.js-integration-bing-ads":84,"analytics.js-integration-blueshift":85,"analytics.js-integration-bronto":86,"analytics.js-integration-bugherd":87,"analytics.js-integration-bugsnag":88,"analytics.js-integration-chameleon":89,"analytics.js-integration-chartbeat":90,"analytics.js-integration-clicktale":91,"analytics.js-integration-clicky":92,"analytics.js-integration-comscore":93,"analytics.js-integration-crazy-egg":94,"analytics.js-integration-curebit":95,"analytics.js-integration-customerio":96,"analytics.js-integration-drip":97,"analytics.js-integration-elevio":98,"analytics.js-integration-errorception":99,"analytics.js-integration-evergage":100,"analytics.js-integration-extole":101,"analytics.js-integration-facebook-conversion-tracking":102,"analytics.js-integration-foxmetrics":103,"analytics.js-integration-frontleaf":104,"analytics.js-integration-fullstory":105,"analytics.js-integration-gauges":106,"analytics.js-integration-get-satisfaction":107,"analytics.js-integration-google-analytics":108,"analytics.js-integration-google-tag-manager":109,"analytics.js-integration-gosquared":110,"analytics.js-integration-heap":111,"analytics.js-integration-hellobar":112,"analytics.js-integration-hittail":113,"analytics.js-integration-hubspot":114,"analytics.js-integration-improvely":115,"analytics.js-integration-insidevault":116,"analytics.js-integration-inspectlet":117,"analytics.js-integration-intercom":118,"analytics.js-integration-keen-io":119,"analytics.js-integration-kenshoo":120,"analytics.js-integration-kissmetrics":121,"analytics.js-integration-klaviyo":122,"analytics.js-integration-livechat":123,"analytics.js-integration-lucky-orange":124,"analytics.js-integration-lytics":125,"analytics.js-integration-mixpanel":126,"analytics.js-integration-mojn":127,"analytics.js-integration-mouseflow":128,"analytics.js-integration-mousestats":129,"analytics.js-integration-navilytics":130,"analytics.js-integration-nudgespot":131,"analytics.js-integration-olark":132,"analytics.js-integration-optimizely":133,"analytics.js-integration-outbound":134,"analytics.js-integration-perfect-audience":135,"analytics.js-integration-pingdom":136,"analytics.js-integration-piwik":137,"analytics.js-integration-preact":138,"analytics.js-integration-qualaroo":139,"analytics.js-integration-quantcast":140,"analytics.js-integration-rollbar":141,"analytics.js-integration-route":142,"analytics.js-integration-saasquatch":143,"analytics.js-integration-satismeter":144,"analytics.js-integration-segmentio":145,"analytics.js-integration-sentry":146,"analytics.js-integration-snapengage":147,"analytics.js-integration-spinnakr":148,"analytics.js-integration-supporthero":149,"analytics.js-integration-taplytics":150,"analytics.js-integration-tapstream":151,"analytics.js-integration-trakio":152,"analytics.js-integration-twitter-ads":153,"analytics.js-integration-userlike":154,"analytics.js-integration-uservoice":155,"analytics.js-integration-vero":156,"analytics.js-integration-visual-website-optimizer":157,"analytics.js-integration-webengage":158,"analytics.js-integration-woopra":159,"analytics.js-integration-wootric":160,"analytics.js-integration-yandex-metrica":161}],
+}, {"analytics.js-integration-adroll":76,"analytics.js-integration-adwords":77,"analytics.js-integration-alexa":78,"analytics.js-integration-amplitude":79,"analytics.js-integration-appcues":80,"analytics.js-integration-atatus":81,"analytics.js-integration-autosend":82,"analytics.js-integration-awesm":83,"analytics.js-integration-bing-ads":84,"analytics.js-integration-blueshift":85,"analytics.js-integration-bronto":86,"analytics.js-integration-bugherd":87,"analytics.js-integration-bugsnag":88,"analytics.js-integration-chameleon":89,"analytics.js-integration-chartbeat":90,"analytics.js-integration-clicktale":91,"analytics.js-integration-clicky":92,"analytics.js-integration-comscore":93,"analytics.js-integration-crazy-egg":94,"analytics.js-integration-curebit":95,"analytics.js-integration-customerio":96,"analytics.js-integration-drip":97,"analytics.js-integration-elevio":98,"analytics.js-integration-errorception":99,"analytics.js-integration-evergage":100,"analytics.js-integration-extole":101,"analytics.js-integration-facebook-conversion-tracking":102,"analytics.js-integration-foxmetrics":103,"analytics.js-integration-frontleaf":104,"analytics.js-integration-fullstory":105,"analytics.js-integration-gauges":106,"analytics.js-integration-get-satisfaction":107,"analytics.js-integration-google-analytics":108,"analytics.js-integration-google-tag-manager":109,"analytics.js-integration-gosquared":110,"analytics.js-integration-heap":111,"analytics.js-integration-hellobar":112,"analytics.js-integration-hittail":113,"analytics.js-integration-hubspot":114,"analytics.js-integration-improvely":115,"analytics.js-integration-insidevault":116,"analytics.js-integration-inspectlet":117,"analytics.js-integration-intercom":118,"analytics.js-integration-keen-io":119,"analytics.js-integration-kenshoo":120,"analytics.js-integration-kissmetrics":121,"analytics.js-integration-klaviyo":122,"analytics.js-integration-livechat":123,"analytics.js-integration-lucky-orange":124,"analytics.js-integration-lytics":125,"analytics.js-integration-mixpanel":126,"analytics.js-integration-mojn":127,"analytics.js-integration-mouseflow":128,"analytics.js-integration-mousestats":129,"analytics.js-integration-navilytics":130,"analytics.js-integration-nudgespot":131,"analytics.js-integration-olark":132,"analytics.js-integration-optimizely":133,"analytics.js-integration-outbound":134,"analytics.js-integration-perfect-audience":135,"analytics.js-integration-pingdom":136,"analytics.js-integration-piwik":137,"analytics.js-integration-preact":138,"analytics.js-integration-qualaroo":139,"analytics.js-integration-quantcast":140,"analytics.js-integration-rollbar":141,"analytics.js-integration-route":142,"analytics.js-integration-saasquatch":143,"analytics.js-integration-satismeter":144,"analytics.js-integration-segmentio":145,"analytics.js-integration-sentry":146,"analytics.js-integration-snapengage":147,"analytics.js-integration-spinnakr":148,"analytics.js-integration-supporthero":149,"analytics.js-integration-taplytics":150,"analytics.js-integration-tapstream":151,"analytics.js-integration-trakio":152,"analytics.js-integration-twitter-ads":153,"analytics.js-integration-userlike":154,"analytics.js-integration-uservoice":155,"analytics.js-integration-vero":156,"analytics.js-integration-visual-website-optimizer":157,"analytics.js-integration-webengage":158,"analytics.js-integration-woopra":159,"analytics.js-integration-wootric":160,"analytics.js-integration-yandex-metrica":161,"UseFedora/fedora-analytics.js-integration-sumome":162}],
 76: [function(require, module, exports) {
 
 /**
@@ -7108,8 +7089,8 @@ AdRoll.prototype.track = function(track) {
   }
 };
 
-}, {"analytics.js-integration":162,"to-snake-case":163,"use-https":164,"each":4,"is":16,"obj-case":40}],
-162: [function(require, module, exports) {
+}, {"analytics.js-integration":163,"to-snake-case":164,"use-https":165,"each":4,"is":16,"obj-case":38}],
+163: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -7173,8 +7154,8 @@ function createIntegration(name){
 
 module.exports = createIntegration;
 
-}, {"bind":165,"clone":11,"debug":166,"defaults":14,"extend":167,"slug":168,"./protos":169,"./statics":170}],
-165: [function(require, module, exports) {
+}, {"bind":166,"clone":11,"debug":167,"defaults":14,"extend":168,"slug":169,"./protos":170,"./statics":171}],
+166: [function(require, module, exports) {
 
 var bind = require('bind')
   , bindAll = require('bind-all');
@@ -7215,16 +7196,16 @@ function bindMethods (obj, methods) {
   }
   return obj;
 }
-}, {"bind":53,"bind-all":54}],
-166: [function(require, module, exports) {
+}, {"bind":52,"bind-all":53}],
+167: [function(require, module, exports) {
 if ('undefined' == typeof window) {
   module.exports = require('./lib/debug');
 } else {
   module.exports = require('./debug');
 }
 
-}, {"./lib/debug":171,"./debug":172}],
-171: [function(require, module, exports) {
+}, {"./lib/debug":172,"./debug":173}],
+172: [function(require, module, exports) {
 /**
  * Module dependencies.
  */
@@ -7374,7 +7355,7 @@ function coerce(val) {
 }
 
 }, {}],
-172: [function(require, module, exports) {
+173: [function(require, module, exports) {
 
 /**
  * Expose `debug()` as the module.
@@ -7514,7 +7495,7 @@ try {
 } catch(e){}
 
 }, {}],
-167: [function(require, module, exports) {
+168: [function(require, module, exports) {
 
 module.exports = function extend (object) {
     // Takes an unlimited number of extenders.
@@ -7531,7 +7512,7 @@ module.exports = function extend (object) {
     return object;
 };
 }, {}],
-168: [function(require, module, exports) {
+169: [function(require, module, exports) {
 
 /**
  * Generate a slug from the given `str`.
@@ -7557,7 +7538,7 @@ module.exports = function (str, options) {
 };
 
 }, {}],
-169: [function(require, module, exports) {
+170: [function(require, module, exports) {
 /* global setInterval:true setTimeout:true */
 
 /**
@@ -7983,8 +7964,8 @@ function render(template, locals){
   }, {}, template.attrs);
 }
 
-}, {"emitter":6,"after":8,"each":173,"analytics-events":174,"fmt":175,"foldl":176,"load-iframe":177,"load-script":178,"to-no-case":179,"next-tick":55,"type":180}],
-173: [function(require, module, exports) {
+}, {"emitter":6,"after":8,"each":174,"analytics-events":175,"fmt":176,"foldl":177,"load-iframe":178,"load-script":179,"to-no-case":180,"next-tick":54,"type":181}],
+174: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -8075,8 +8056,8 @@ function array(obj, fn, ctx) {
   }
 }
 
-}, {"type":180,"component-type":180,"to-function":181}],
-180: [function(require, module, exports) {
+}, {"type":181,"component-type":181,"to-function":71}],
+181: [function(require, module, exports) {
 
 /**
  * toString ref.
@@ -8111,162 +8092,7 @@ module.exports = function(val){
 };
 
 }, {}],
-181: [function(require, module, exports) {
-
-/**
- * Module Dependencies
- */
-
-var expr;
-try {
-  expr = require('props');
-} catch(e) {
-  expr = require('component-props');
-}
-
-/**
- * Expose `toFunction()`.
- */
-
-module.exports = toFunction;
-
-/**
- * Convert `obj` to a `Function`.
- *
- * @param {Mixed} obj
- * @return {Function}
- * @api private
- */
-
-function toFunction(obj) {
-  switch ({}.toString.call(obj)) {
-    case '[object Object]':
-      return objectToFunction(obj);
-    case '[object Function]':
-      return obj;
-    case '[object String]':
-      return stringToFunction(obj);
-    case '[object RegExp]':
-      return regexpToFunction(obj);
-    default:
-      return defaultToFunction(obj);
-  }
-}
-
-/**
- * Default to strict equality.
- *
- * @param {Mixed} val
- * @return {Function}
- * @api private
- */
-
-function defaultToFunction(val) {
-  return function(obj){
-    return val === obj;
-  };
-}
-
-/**
- * Convert `re` to a function.
- *
- * @param {RegExp} re
- * @return {Function}
- * @api private
- */
-
-function regexpToFunction(re) {
-  return function(obj){
-    return re.test(obj);
-  };
-}
-
-/**
- * Convert property `str` to a function.
- *
- * @param {String} str
- * @return {Function}
- * @api private
- */
-
-function stringToFunction(str) {
-  // immediate such as "> 20"
-  if (/^ *\W+/.test(str)) return new Function('_', 'return _ ' + str);
-
-  // properties such as "name.first" or "age > 18" or "age > 18 && age < 36"
-  return new Function('_', 'return ' + get(str));
-}
-
-/**
- * Convert `object` to a function.
- *
- * @param {Object} object
- * @return {Function}
- * @api private
- */
-
-function objectToFunction(obj) {
-  var match = {};
-  for (var key in obj) {
-    match[key] = typeof obj[key] === 'string'
-      ? defaultToFunction(obj[key])
-      : toFunction(obj[key]);
-  }
-  return function(val){
-    if (typeof val !== 'object') return false;
-    for (var key in match) {
-      if (!(key in val)) return false;
-      if (!match[key](val[key])) return false;
-    }
-    return true;
-  };
-}
-
-/**
- * Built the getter function. Supports getter style functions
- *
- * @param {String} str
- * @return {String}
- * @api private
- */
-
-function get(str) {
-  var props = expr(str);
-  if (!props.length) return '_.' + str;
-
-  var val, i, prop;
-  for (i = 0; i < props.length; i++) {
-    prop = props[i];
-    val = '_.' + prop;
-    val = "('function' == typeof " + val + " ? " + val + "() : " + val + ")";
-
-    // mimic negative lookbehind to avoid problems with nested properties
-    str = stripNested(prop, str, val);
-  }
-
-  return str;
-}
-
-/**
- * Mimic negative lookbehind to avoid problems with nested properties.
- *
- * See: http://blog.stevenlevithan.com/archives/mimic-lookbehind-javascript
- *
- * @param {String} prop
- * @param {String} str
- * @param {String} val
- * @return {String}
- * @api private
- */
-
-function stripNested (prop, str, val) {
-  return str.replace(new RegExp('(\\.)?' + prop, 'g'), function($0, $1) {
-    return $1 ? $0 : val;
-  });
-}
-
-}, {"props":73,"component-props":73}],
-174: [function(require, module, exports) {
+175: [function(require, module, exports) {
 
 module.exports = {
   removedProduct: /^[ _]?removed[ _]?product[ _]?$/i,
@@ -8286,7 +8112,7 @@ module.exports = {
 };
 
 }, {}],
-175: [function(require, module, exports) {
+176: [function(require, module, exports) {
 
 /**
  * toString.
@@ -8331,7 +8157,7 @@ function fmt(str){
 }
 
 }, {}],
-176: [function(require, module, exports) {
+177: [function(require, module, exports) {
 'use strict';
 
 /**
@@ -8389,8 +8215,8 @@ var foldl = function foldl(iterator, accumulator, collection) {
 
 module.exports = foldl;
 
-}, {"each":70}],
-177: [function(require, module, exports) {
+}, {"each":69}],
+178: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -8452,7 +8278,7 @@ module.exports = function loadIframe(options, fn){
   // give it an ID or attributes.
   return iframe;
 };
-}, {"script-onload":182,"next-tick":55,"type":45}],
+}, {"script-onload":182,"next-tick":54,"type":43}],
 182: [function(require, module, exports) {
 
 // https://github.com/thirdpartyjs/thirdpartyjs-code/blob/master/examples/templates/02/loading-files/index.html
@@ -8509,7 +8335,7 @@ function attach(el, fn){
 }
 
 }, {}],
-178: [function(require, module, exports) {
+179: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -8570,8 +8396,8 @@ module.exports = function loadScript(options, fn){
   // give it an ID or attributes.
   return script;
 };
-}, {"script-onload":182,"next-tick":55,"type":45}],
-179: [function(require, module, exports) {
+}, {"script-onload":182,"next-tick":54,"type":43}],
+180: [function(require, module, exports) {
 
 /**
  * Expose `toNoCase`.
@@ -8644,7 +8470,7 @@ function uncamelize (string) {
   });
 }
 }, {}],
-170: [function(require, module, exports) {
+171: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -8808,7 +8634,7 @@ function objectify(str) {
   };
 }
 
-}, {"emitter":6,"domify":183,"each":173,"includes":68}],
+}, {"emitter":6,"domify":183,"each":174,"includes":67}],
 183: [function(require, module, exports) {
 
 /**
@@ -8920,7 +8746,7 @@ function parse(html, doc) {
 }
 
 }, {}],
-163: [function(require, module, exports) {
+164: [function(require, module, exports) {
 var toSpace = require('to-space-case');
 
 
@@ -9046,7 +8872,7 @@ function uncamelize (string) {
   });
 }
 }, {}],
-164: [function(require, module, exports) {
+165: [function(require, module, exports) {
 
 /**
  * Protocol.
@@ -9175,7 +9001,7 @@ AdWords.prototype.track = function(track) {
   });
 };
 
-}, {"each":4,"analytics.js-integration":162}],
+}, {"each":4,"analytics.js-integration":163}],
 78: [function(require, module, exports) {
 
 /**
@@ -9226,7 +9052,7 @@ Alexa.prototype.loaded = function() {
   return !!window.atrk;
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 79: [function(require, module, exports) {
 
 /**
@@ -9390,7 +9216,7 @@ Amplitude.prototype.setDeviceId = function(deviceId) {
   if (deviceId) window.amplitude.setDeviceId(deviceId);
 };
 
-}, {"analytics.js-integration":162,"top-domain":186}],
+}, {"analytics.js-integration":163,"top-domain":186}],
 186: [function(require, module, exports) {
 
 /**
@@ -9413,12 +9239,12 @@ var regexp = /[a-z0-9][a-z0-9\-]*[a-z0-9]\.[a-z\.]{2,6}$/i;
 
 /**
  * Get the top domain.
- * 
+ *
  * Official Grammar: http://tools.ietf.org/html/rfc883#page-56
  * Look for tlds with up to 2-6 characters.
- * 
+ *
  * Example:
- * 
+ *
  *      domain('http://localhost:3000/baz');
  *      // => ''
  *      domain('http://dev:3000/baz');
@@ -9427,7 +9253,7 @@ var regexp = /[a-z0-9][a-z0-9\-]*[a-z0-9]\.[a-z\.]{2,6}$/i;
  *      // => ''
  *      domain('http://segment.io/baz');
  *      // => 'segment.io'
- * 
+ *
  * @param {String} url
  * @return {String}
  * @api public
@@ -9439,7 +9265,7 @@ function domain(url){
   return match ? match[0] : '';
 };
 
-}, {"url":62}],
+}, {"url":61}],
 80: [function(require, module, exports) {
 
 /**
@@ -9516,7 +9342,7 @@ Appcues.prototype.identify = function(identify) {
   window.Appcues.identify(identify.userId(), identify.traits());
 };
 
-}, {"analytics.js-integration":162,"is":16,"load-script":187}],
+}, {"analytics.js-integration":163,"is":16,"load-script":187}],
 187: [function(require, module, exports) {
 
 /**
@@ -9578,7 +9404,7 @@ module.exports = function loadScript(options, fn){
   // give it an ID or attributes.
   return script;
 };
-}, {"script-onload":182,"next-tick":55,"type":45}],
+}, {"script-onload":182,"next-tick":54,"type":43}],
 81: [function(require, module, exports) {
 
 /**
@@ -9638,7 +9464,7 @@ Atatus.prototype.identify = function(identify) {
   window.atatus.setCustomData({ person: identify.traits() });
 };
 
-}, {"analytics.js-integration":162,"is":16}],
+}, {"analytics.js-integration":163,"is":16}],
 82: [function(require, module, exports) {
 
 /**
@@ -9714,7 +9540,7 @@ Autosend.prototype.track = function(track) {
   window._autosend.track(track.event());
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 83: [function(require, module, exports) {
 
 /**
@@ -9774,7 +9600,7 @@ Awesm.prototype.track = function(track) {
   });
 };
 
-}, {"each":4,"analytics.js-integration":162}],
+}, {"each":4,"analytics.js-integration":163}],
 84: [function(require, module, exports) {
 
 /**
@@ -9862,7 +9688,7 @@ Bing.prototype.track = function(track) {
   window.uetq.push(event);
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 85: [function(require, module, exports) {
 
 /**
@@ -10004,7 +9830,7 @@ function removeBlankAttributes(obj) {
   }, {}, obj);
 }
 
-}, {"analytics.js-integration":162,"foldl":176}],
+}, {"analytics.js-integration":163,"foldl":177}],
 86: [function(require, module, exports) {
 
 /**
@@ -10106,8 +9932,1366 @@ Bronto.prototype.completedOrder = function(track) {
   });
 };
 
-}, {"facade":7,"each":4,"analytics.js-integration":162,"querystring":188}],
+}, {"facade":188,"each":4,"analytics.js-integration":163,"querystring":189}],
 188: [function(require, module, exports) {
+
+var Facade = require('./facade');
+
+/**
+ * Expose `Facade` facade.
+ */
+
+module.exports = Facade;
+
+/**
+ * Expose specific-method facades.
+ */
+
+Facade.Alias = require('./alias');
+Facade.Group = require('./group');
+Facade.Identify = require('./identify');
+Facade.Track = require('./track');
+Facade.Page = require('./page');
+Facade.Screen = require('./screen');
+
+}, {"./facade":190,"./alias":191,"./group":192,"./identify":193,"./track":194,"./page":195,"./screen":196}],
+190: [function(require, module, exports) {
+
+var traverse = require('isodate-traverse');
+var isEnabled = require('./is-enabled');
+var clone = require('./utils').clone;
+var type = require('./utils').type;
+var address = require('./address');
+var objCase = require('obj-case');
+var newDate = require('new-date');
+
+/**
+ * Expose `Facade`.
+ */
+
+module.exports = Facade;
+
+/**
+ * Initialize a new `Facade` with an `obj` of arguments.
+ *
+ * @param {Object} obj
+ */
+
+function Facade (obj) {
+  if (!obj.hasOwnProperty('timestamp')) obj.timestamp = new Date();
+  else obj.timestamp = newDate(obj.timestamp);
+  traverse(obj);
+  this.obj = obj;
+}
+
+/**
+ * Mixin address traits.
+ */
+
+address(Facade.prototype);
+
+/**
+ * Return a proxy function for a `field` that will attempt to first use methods,
+ * and fallback to accessing the underlying object directly. You can specify
+ * deeply nested fields too like:
+ *
+ *   this.proxy('options.Librato');
+ *
+ * @param {String} field
+ */
+
+Facade.prototype.proxy = function (field) {
+  var fields = field.split('.');
+  field = fields.shift();
+
+  // Call a function at the beginning to take advantage of facaded fields
+  var obj = this[field] || this.field(field);
+  if (!obj) return obj;
+  if (typeof obj === 'function') obj = obj.call(this) || {};
+  if (fields.length === 0) return transform(obj);
+
+  obj = objCase(obj, fields.join('.'));
+  return transform(obj);
+};
+
+/**
+ * Directly access a specific `field` from the underlying object, returning a
+ * clone so outsiders don't mess with stuff.
+ *
+ * @param {String} field
+ * @return {Mixed}
+ */
+
+Facade.prototype.field = function (field) {
+  var obj = this.obj[field];
+  return transform(obj);
+};
+
+/**
+ * Utility method to always proxy a particular `field`. You can specify deeply
+ * nested fields too like:
+ *
+ *   Facade.proxy('options.Librato');
+ *
+ * @param {String} field
+ * @return {Function}
+ */
+
+Facade.proxy = function (field) {
+  return function () {
+    return this.proxy(field);
+  };
+};
+
+/**
+ * Utility method to directly access a `field`.
+ *
+ * @param {String} field
+ * @return {Function}
+ */
+
+Facade.field = function (field) {
+  return function () {
+    return this.field(field);
+  };
+};
+
+/**
+ * Proxy multiple `path`.
+ *
+ * @param {String} path
+ * @return {Array}
+ */
+
+Facade.multi = function(path){
+  return function(){
+    var multi = this.proxy(path + 's');
+    if ('array' == type(multi)) return multi;
+    var one = this.proxy(path);
+    if (one) one = [clone(one)];
+    return one || [];
+  };
+};
+
+/**
+ * Proxy one `path`.
+ *
+ * @param {String} path
+ * @return {Mixed}
+ */
+
+Facade.one = function(path){
+  return function(){
+    var one = this.proxy(path);
+    if (one) return one;
+    var multi = this.proxy(path + 's');
+    if ('array' == type(multi)) return multi[0];
+  };
+};
+
+/**
+ * Get the basic json object of this facade.
+ *
+ * @return {Object}
+ */
+
+Facade.prototype.json = function () {
+  var ret = clone(this.obj);
+  if (this.type) ret.type = this.type();
+  return ret;
+};
+
+/**
+ * Get the options of a call (formerly called "context"). If you pass an
+ * integration name, it will get the options for that specific integration, or
+ * undefined if the integration is not enabled.
+ *
+ * @param {String} integration (optional)
+ * @return {Object or Null}
+ */
+
+Facade.prototype.context =
+Facade.prototype.options = function (integration) {
+  var options = clone(this.obj.options || this.obj.context) || {};
+  if (!integration) return clone(options);
+  if (!this.enabled(integration)) return;
+  var integrations = this.integrations();
+  var value = integrations[integration] || objCase(integrations, integration);
+  if ('boolean' == typeof value) value = {};
+  return value || {};
+};
+
+/**
+ * Check whether an integration is enabled.
+ *
+ * @param {String} integration
+ * @return {Boolean}
+ */
+
+Facade.prototype.enabled = function (integration) {
+  var allEnabled = this.proxy('options.providers.all');
+  if (typeof allEnabled !== 'boolean') allEnabled = this.proxy('options.all');
+  if (typeof allEnabled !== 'boolean') allEnabled = this.proxy('integrations.all');
+  if (typeof allEnabled !== 'boolean') allEnabled = true;
+
+  var enabled = allEnabled && isEnabled(integration);
+  var options = this.integrations();
+
+  // If the integration is explicitly enabled or disabled, use that
+  // First, check options.providers for backwards compatibility
+  if (options.providers && options.providers.hasOwnProperty(integration)) {
+    enabled = options.providers[integration];
+  }
+
+  // Next, check for the integration's existence in 'options' to enable it.
+  // If the settings are a boolean, use that, otherwise it should be enabled.
+  if (options.hasOwnProperty(integration)) {
+    var settings = options[integration];
+    if (typeof settings === 'boolean') {
+      enabled = settings;
+    } else {
+      enabled = true;
+    }
+  }
+
+  return enabled ? true : false;
+};
+
+/**
+ * Get all `integration` options.
+ *
+ * @param {String} integration
+ * @return {Object}
+ * @api private
+ */
+
+Facade.prototype.integrations = function(){
+  return this.obj.integrations
+    || this.proxy('options.providers')
+    || this.options();
+};
+
+/**
+ * Check whether the user is active.
+ *
+ * @return {Boolean}
+ */
+
+Facade.prototype.active = function () {
+  var active = this.proxy('options.active');
+  if (active === null || active === undefined) active = true;
+  return active;
+};
+
+/**
+ * Get `sessionId / anonymousId`.
+ *
+ * @return {Mixed}
+ * @api public
+ */
+
+Facade.prototype.sessionId =
+Facade.prototype.anonymousId = function(){
+  return this.field('anonymousId')
+    || this.field('sessionId');
+};
+
+/**
+ * Get `groupId` from `context.groupId`.
+ *
+ * @return {String}
+ * @api public
+ */
+
+Facade.prototype.groupId = Facade.proxy('options.groupId');
+
+/**
+ * Get the call's "super properties" which are just traits that have been
+ * passed in as if from an identify call.
+ *
+ * @param {Object} aliases
+ * @return {Object}
+ */
+
+Facade.prototype.traits = function (aliases) {
+  var ret = this.proxy('options.traits') || {};
+  var id = this.userId();
+  aliases = aliases || {};
+
+  if (id) ret.id = id;
+
+  for (var alias in aliases) {
+    var value = null == this[alias]
+      ? this.proxy('options.traits.' + alias)
+      : this[alias]();
+    if (null == value) continue;
+    ret[aliases[alias]] = value;
+    delete ret[alias];
+  }
+
+  return ret;
+};
+
+/**
+ * Add a convenient way to get the library name and version
+ */
+
+Facade.prototype.library = function(){
+  var library = this.proxy('options.library');
+  if (!library) return { name: 'unknown', version: null };
+  if (typeof library === 'string') return { name: library, version: null };
+  return library;
+};
+
+/**
+ * Setup some basic proxies.
+ */
+
+Facade.prototype.userId = Facade.field('userId');
+Facade.prototype.channel = Facade.field('channel');
+Facade.prototype.timestamp = Facade.field('timestamp');
+Facade.prototype.userAgent = Facade.proxy('options.userAgent');
+Facade.prototype.ip = Facade.proxy('options.ip');
+
+/**
+ * Return the cloned and traversed object
+ *
+ * @param {Mixed} obj
+ * @return {Mixed}
+ */
+
+function transform(obj){
+  var cloned = clone(obj);
+  return cloned;
+}
+
+}, {"isodate-traverse":39,"./is-enabled":197,"./utils":198,"./address":199,"obj-case":38,"new-date":40}],
+197: [function(require, module, exports) {
+
+/**
+ * A few integrations are disabled by default. They must be explicitly
+ * enabled by setting options[Provider] = true.
+ */
+
+var disabled = {
+  Salesforce: true
+};
+
+/**
+ * Check whether an integration should be enabled by default.
+ *
+ * @param {String} integration
+ * @return {Boolean}
+ */
+
+module.exports = function (integration) {
+  return ! disabled[integration];
+};
+}, {}],
+198: [function(require, module, exports) {
+
+/**
+ * TODO: use component symlink, everywhere ?
+ */
+
+try {
+  exports.inherit = require('inherit');
+  exports.clone = require('clone');
+  exports.type = require('type');
+} catch (e) {
+  exports.inherit = require('inherit-component');
+  exports.clone = require('clone-component');
+  exports.type = require('type-component');
+}
+
+}, {"inherit":41,"clone":42,"type":43}],
+199: [function(require, module, exports) {
+
+/**
+ * Module dependencies.
+ */
+
+var get = require('obj-case');
+
+/**
+ * Add address getters to `proto`.
+ *
+ * @param {Function} proto
+ */
+
+module.exports = function(proto){
+  proto.zip = trait('postalCode', 'zip');
+  proto.country = trait('country');
+  proto.street = trait('street');
+  proto.state = trait('state');
+  proto.city = trait('city');
+
+  function trait(a, b){
+    return function(){
+      var traits = this.traits();
+      var props = this.properties ? this.properties() : {};
+
+      return get(traits, 'address.' + a)
+        || get(traits, a)
+        || (b ? get(traits, 'address.' + b) : null)
+        || (b ? get(traits, b) : null)
+        || get(props, 'address.' + a)
+        || get(props, a)
+        || (b ? get(props, 'address.' + b) : null)
+        || (b ? get(props, b) : null);
+    };
+  }
+};
+
+}, {"obj-case":38}],
+191: [function(require, module, exports) {
+
+/**
+ * Module dependencies.
+ */
+
+var inherit = require('./utils').inherit;
+var Facade = require('./facade');
+
+/**
+ * Expose `Alias` facade.
+ */
+
+module.exports = Alias;
+
+/**
+ * Initialize a new `Alias` facade with a `dictionary` of arguments.
+ *
+ * @param {Object} dictionary
+ *   @property {String} from
+ *   @property {String} to
+ *   @property {Object} options
+ */
+
+function Alias (dictionary) {
+  Facade.call(this, dictionary);
+}
+
+/**
+ * Inherit from `Facade`.
+ */
+
+inherit(Alias, Facade);
+
+/**
+ * Return type of facade.
+ *
+ * @return {String}
+ */
+
+Alias.prototype.type =
+Alias.prototype.action = function () {
+  return 'alias';
+};
+
+/**
+ * Get `previousId`.
+ *
+ * @return {Mixed}
+ * @api public
+ */
+
+Alias.prototype.from =
+Alias.prototype.previousId = function(){
+  return this.field('previousId')
+    || this.field('from');
+};
+
+/**
+ * Get `userId`.
+ *
+ * @return {String}
+ * @api public
+ */
+
+Alias.prototype.to =
+Alias.prototype.userId = function(){
+  return this.field('userId')
+    || this.field('to');
+};
+
+}, {"./utils":198,"./facade":190}],
+192: [function(require, module, exports) {
+
+/**
+ * Module dependencies.
+ */
+
+var inherit = require('./utils').inherit;
+var address = require('./address');
+var isEmail = require('is-email');
+var newDate = require('new-date');
+var Facade = require('./facade');
+
+/**
+ * Expose `Group` facade.
+ */
+
+module.exports = Group;
+
+/**
+ * Initialize a new `Group` facade with a `dictionary` of arguments.
+ *
+ * @param {Object} dictionary
+ *   @param {String} userId
+ *   @param {String} groupId
+ *   @param {Object} properties
+ *   @param {Object} options
+ */
+
+function Group (dictionary) {
+  Facade.call(this, dictionary);
+}
+
+/**
+ * Inherit from `Facade`
+ */
+
+inherit(Group, Facade);
+
+/**
+ * Get the facade's action.
+ */
+
+Group.prototype.type =
+Group.prototype.action = function () {
+  return 'group';
+};
+
+/**
+ * Setup some basic proxies.
+ */
+
+Group.prototype.groupId = Facade.field('groupId');
+
+/**
+ * Get created or createdAt.
+ *
+ * @return {Date}
+ */
+
+Group.prototype.created = function(){
+  var created = this.proxy('traits.createdAt')
+    || this.proxy('traits.created')
+    || this.proxy('properties.createdAt')
+    || this.proxy('properties.created');
+
+  if (created) return newDate(created);
+};
+
+/**
+ * Get the group's email, falling back to the group ID if it's a valid email.
+ *
+ * @return {String}
+ */
+
+Group.prototype.email = function () {
+  var email = this.proxy('traits.email');
+  if (email) return email;
+  var groupId = this.groupId();
+  if (isEmail(groupId)) return groupId;
+};
+
+/**
+ * Get the group's traits.
+ *
+ * @param {Object} aliases
+ * @return {Object}
+ */
+
+Group.prototype.traits = function (aliases) {
+  var ret = this.properties();
+  var id = this.groupId();
+  aliases = aliases || {};
+
+  if (id) ret.id = id;
+
+  for (var alias in aliases) {
+    var value = null == this[alias]
+      ? this.proxy('traits.' + alias)
+      : this[alias]();
+    if (null == value) continue;
+    ret[aliases[alias]] = value;
+    delete ret[alias];
+  }
+
+  return ret;
+};
+
+/**
+ * Special traits.
+ */
+
+Group.prototype.name = Facade.proxy('traits.name');
+Group.prototype.industry = Facade.proxy('traits.industry');
+Group.prototype.employees = Facade.proxy('traits.employees');
+
+/**
+ * Get traits or properties.
+ *
+ * TODO: remove me
+ *
+ * @return {Object}
+ */
+
+Group.prototype.properties = function(){
+  return this.field('traits')
+    || this.field('properties')
+    || {};
+};
+
+}, {"./utils":198,"./address":199,"is-email":50,"new-date":40,"./facade":190}],
+193: [function(require, module, exports) {
+
+var address = require('./address');
+var Facade = require('./facade');
+var isEmail = require('is-email');
+var newDate = require('new-date');
+var utils = require('./utils');
+var get = require('obj-case');
+var trim = require('trim');
+var inherit = utils.inherit;
+var clone = utils.clone;
+var type = utils.type;
+
+/**
+ * Expose `Idenfity` facade.
+ */
+
+module.exports = Identify;
+
+/**
+ * Initialize a new `Identify` facade with a `dictionary` of arguments.
+ *
+ * @param {Object} dictionary
+ *   @param {String} userId
+ *   @param {String} sessionId
+ *   @param {Object} traits
+ *   @param {Object} options
+ */
+
+function Identify (dictionary) {
+  Facade.call(this, dictionary);
+}
+
+/**
+ * Inherit from `Facade`.
+ */
+
+inherit(Identify, Facade);
+
+/**
+ * Get the facade's action.
+ */
+
+Identify.prototype.type =
+Identify.prototype.action = function () {
+  return 'identify';
+};
+
+/**
+ * Get the user's traits.
+ *
+ * @param {Object} aliases
+ * @return {Object}
+ */
+
+Identify.prototype.traits = function (aliases) {
+  var ret = this.field('traits') || {};
+  var id = this.userId();
+  aliases = aliases || {};
+
+  if (id) ret.id = id;
+
+  for (var alias in aliases) {
+    var value = null == this[alias]
+      ? this.proxy('traits.' + alias)
+      : this[alias]();
+    if (null == value) continue;
+    ret[aliases[alias]] = value;
+    if (alias !== aliases[alias]) delete ret[alias];
+  }
+
+  return ret;
+};
+
+/**
+ * Get the user's email, falling back to their user ID if it's a valid email.
+ *
+ * @return {String}
+ */
+
+Identify.prototype.email = function () {
+  var email = this.proxy('traits.email');
+  if (email) return email;
+
+  var userId = this.userId();
+  if (isEmail(userId)) return userId;
+};
+
+/**
+ * Get the user's created date, optionally looking for `createdAt` since lots of
+ * people do that instead.
+ *
+ * @return {Date or Undefined}
+ */
+
+Identify.prototype.created = function () {
+  var created = this.proxy('traits.created') || this.proxy('traits.createdAt');
+  if (created) return newDate(created);
+};
+
+/**
+ * Get the company created date.
+ *
+ * @return {Date or undefined}
+ */
+
+Identify.prototype.companyCreated = function(){
+  var created = this.proxy('traits.company.created')
+    || this.proxy('traits.company.createdAt');
+
+  if (created) return newDate(created);
+};
+
+/**
+ * Get the user's name, optionally combining a first and last name if that's all
+ * that was provided.
+ *
+ * @return {String or Undefined}
+ */
+
+Identify.prototype.name = function () {
+  var name = this.proxy('traits.name');
+  if (typeof name === 'string') return trim(name);
+
+  var firstName = this.firstName();
+  var lastName = this.lastName();
+  if (firstName && lastName) return trim(firstName + ' ' + lastName);
+};
+
+/**
+ * Get the user's first name, optionally splitting it out of a single name if
+ * that's all that was provided.
+ *
+ * @return {String or Undefined}
+ */
+
+Identify.prototype.firstName = function () {
+  var firstName = this.proxy('traits.firstName');
+  if (typeof firstName === 'string') return trim(firstName);
+
+  var name = this.proxy('traits.name');
+  if (typeof name === 'string') return trim(name).split(' ')[0];
+};
+
+/**
+ * Get the user's last name, optionally splitting it out of a single name if
+ * that's all that was provided.
+ *
+ * @return {String or Undefined}
+ */
+
+Identify.prototype.lastName = function () {
+  var lastName = this.proxy('traits.lastName');
+  if (typeof lastName === 'string') return trim(lastName);
+
+  var name = this.proxy('traits.name');
+  if (typeof name !== 'string') return;
+
+  var space = trim(name).indexOf(' ');
+  if (space === -1) return;
+
+  return trim(name.substr(space + 1));
+};
+
+/**
+ * Get the user's unique id.
+ *
+ * @return {String or undefined}
+ */
+
+Identify.prototype.uid = function(){
+  return this.userId()
+    || this.username()
+    || this.email();
+};
+
+/**
+ * Get description.
+ *
+ * @return {String}
+ */
+
+Identify.prototype.description = function(){
+  return this.proxy('traits.description')
+    || this.proxy('traits.background');
+};
+
+/**
+ * Get the age.
+ *
+ * If the age is not explicitly set
+ * the method will compute it from `.birthday()`
+ * if possible.
+ *
+ * @return {Number}
+ */
+
+Identify.prototype.age = function(){
+  var date = this.birthday();
+  var age = get(this.traits(), 'age');
+  if (null != age) return age;
+  if ('date' != type(date)) return;
+  var now = new Date;
+  return now.getFullYear() - date.getFullYear();
+};
+
+/**
+ * Get the avatar.
+ *
+ * .photoUrl needed because help-scout
+ * implementation uses `.avatar || .photoUrl`.
+ *
+ * .avatarUrl needed because trakio uses it.
+ *
+ * @return {Mixed}
+ */
+
+Identify.prototype.avatar = function(){
+  var traits = this.traits();
+  return get(traits, 'avatar')
+    || get(traits, 'photoUrl')
+    || get(traits, 'avatarUrl');
+};
+
+/**
+ * Get the position.
+ *
+ * .jobTitle needed because some integrations use it.
+ *
+ * @return {Mixed}
+ */
+
+Identify.prototype.position = function(){
+  var traits = this.traits();
+  return get(traits, 'position') || get(traits, 'jobTitle');
+};
+
+/**
+ * Setup sme basic "special" trait proxies.
+ */
+
+Identify.prototype.username = Facade.proxy('traits.username');
+Identify.prototype.website = Facade.one('traits.website');
+Identify.prototype.websites = Facade.multi('traits.website');
+Identify.prototype.phone = Facade.one('traits.phone');
+Identify.prototype.phones = Facade.multi('traits.phone');
+Identify.prototype.address = Facade.proxy('traits.address');
+Identify.prototype.gender = Facade.proxy('traits.gender');
+Identify.prototype.birthday = Facade.proxy('traits.birthday');
+
+}, {"./address":199,"./facade":190,"is-email":50,"new-date":40,"./utils":198,"obj-case":38,"trim":51}],
+194: [function(require, module, exports) {
+
+var inherit = require('./utils').inherit;
+var clone = require('./utils').clone;
+var type = require('./utils').type;
+var Facade = require('./facade');
+var Identify = require('./identify');
+var isEmail = require('is-email');
+var get = require('obj-case');
+
+/**
+ * Expose `Track` facade.
+ */
+
+module.exports = Track;
+
+/**
+ * Initialize a new `Track` facade with a `dictionary` of arguments.
+ *
+ * @param {object} dictionary
+ *   @property {String} event
+ *   @property {String} userId
+ *   @property {String} sessionId
+ *   @property {Object} properties
+ *   @property {Object} options
+ */
+
+function Track (dictionary) {
+  Facade.call(this, dictionary);
+}
+
+/**
+ * Inherit from `Facade`.
+ */
+
+inherit(Track, Facade);
+
+/**
+ * Return the facade's action.
+ *
+ * @return {String}
+ */
+
+Track.prototype.type =
+Track.prototype.action = function () {
+  return 'track';
+};
+
+/**
+ * Setup some basic proxies.
+ */
+
+Track.prototype.event = Facade.field('event');
+Track.prototype.value = Facade.proxy('properties.value');
+
+/**
+ * Misc
+ */
+
+Track.prototype.category = Facade.proxy('properties.category');
+
+/**
+ * Ecommerce
+ */
+
+Track.prototype.id = Facade.proxy('properties.id');
+Track.prototype.sku = Facade.proxy('properties.sku');
+Track.prototype.tax = Facade.proxy('properties.tax');
+Track.prototype.name = Facade.proxy('properties.name');
+Track.prototype.price = Facade.proxy('properties.price');
+Track.prototype.total = Facade.proxy('properties.total');
+Track.prototype.coupon = Facade.proxy('properties.coupon');
+Track.prototype.shipping = Facade.proxy('properties.shipping');
+Track.prototype.discount = Facade.proxy('properties.discount');
+
+/**
+ * Description
+ */
+
+Track.prototype.description = Facade.proxy('properties.description');
+
+/**
+ * Plan
+ */
+
+Track.prototype.plan = Facade.proxy('properties.plan');
+
+/**
+ * Order id.
+ *
+ * @return {String}
+ * @api public
+ */
+
+Track.prototype.orderId = function(){
+  return this.proxy('properties.id')
+    || this.proxy('properties.orderId');
+};
+
+/**
+ * Get subtotal.
+ *
+ * @return {Number}
+ */
+
+Track.prototype.subtotal = function(){
+  var subtotal = get(this.properties(), 'subtotal');
+  var total = this.total();
+  var n;
+
+  if (subtotal) return subtotal;
+  if (!total) return 0;
+  if (n = this.tax()) total -= n;
+  if (n = this.shipping()) total -= n;
+  if (n = this.discount()) total += n;
+
+  return total;
+};
+
+/**
+ * Get products.
+ *
+ * @return {Array}
+ */
+
+Track.prototype.products = function(){
+  var props = this.properties();
+  var products = get(props, 'products');
+  return 'array' == type(products)
+    ? products
+    : [];
+};
+
+/**
+ * Get quantity.
+ *
+ * @return {Number}
+ */
+
+Track.prototype.quantity = function(){
+  var props = this.obj.properties || {};
+  return props.quantity || 1;
+};
+
+/**
+ * Get currency.
+ *
+ * @return {String}
+ */
+
+Track.prototype.currency = function(){
+  var props = this.obj.properties || {};
+  return props.currency || 'USD';
+};
+
+/**
+ * BACKWARDS COMPATIBILITY: should probably re-examine where these come from.
+ */
+
+Track.prototype.referrer = Facade.proxy('properties.referrer');
+Track.prototype.query = Facade.proxy('options.query');
+
+/**
+ * Get the call's properties.
+ *
+ * @param {Object} aliases
+ * @return {Object}
+ */
+
+Track.prototype.properties = function (aliases) {
+  var ret = this.field('properties') || {};
+  aliases = aliases || {};
+
+  for (var alias in aliases) {
+    var value = null == this[alias]
+      ? this.proxy('properties.' + alias)
+      : this[alias]();
+    if (null == value) continue;
+    ret[aliases[alias]] = value;
+    delete ret[alias];
+  }
+
+  return ret;
+};
+
+/**
+ * Get the call's username.
+ *
+ * @return {String or Undefined}
+ */
+
+Track.prototype.username = function () {
+  return this.proxy('traits.username') ||
+         this.proxy('properties.username') ||
+         this.userId() ||
+         this.sessionId();
+};
+
+/**
+ * Get the call's email, using an the user ID if it's a valid email.
+ *
+ * @return {String or Undefined}
+ */
+
+Track.prototype.email = function () {
+  var email = this.proxy('traits.email');
+  email = email || this.proxy('properties.email');
+  if (email) return email;
+
+  var userId = this.userId();
+  if (isEmail(userId)) return userId;
+};
+
+/**
+ * Get the call's revenue, parsing it from a string with an optional leading
+ * dollar sign.
+ *
+ * For products/services that don't have shipping and are not directly taxed,
+ * they only care about tracking `revenue`. These are things like
+ * SaaS companies, who sell monthly subscriptions. The subscriptions aren't
+ * taxed directly, and since it's a digital product, it has no shipping.
+ *
+ * The only case where there's a difference between `revenue` and `total`
+ * (in the context of analytics) is on ecommerce platforms, where they want
+ * the `revenue` function to actually return the `total` (which includes
+ * tax and shipping, total = subtotal + tax + shipping). This is probably
+ * because on their backend they assume tax and shipping has been applied to
+ * the value, and so can get the revenue on their own.
+ *
+ * @return {Number}
+ */
+
+Track.prototype.revenue = function () {
+  var revenue = this.proxy('properties.revenue');
+  var event = this.event();
+
+  // it's always revenue, unless it's called during an order completion.
+  if (!revenue && event && event.match(/completed ?order/i)) {
+    revenue = this.proxy('properties.total');
+  }
+
+  return currency(revenue);
+};
+
+/**
+ * Get cents.
+ *
+ * @return {Number}
+ */
+
+Track.prototype.cents = function(){
+  var revenue = this.revenue();
+  return 'number' != typeof revenue
+    ? this.value() || 0
+    : revenue * 100;
+};
+
+/**
+ * A utility to turn the pieces of a track call into an identify. Used for
+ * integrations with super properties or rate limits.
+ *
+ * TODO: remove me.
+ *
+ * @return {Facade}
+ */
+
+Track.prototype.identify = function () {
+  var json = this.json();
+  json.traits = this.traits();
+  return new Identify(json);
+};
+
+/**
+ * Get float from currency value.
+ *
+ * @param {Mixed} val
+ * @return {Number}
+ */
+
+function currency(val) {
+  if (!val) return;
+  if (typeof val === 'number') return val;
+  if (typeof val !== 'string') return;
+
+  val = val.replace(/\$/g, '');
+  val = parseFloat(val);
+
+  if (!isNaN(val)) return val;
+}
+
+}, {"./utils":198,"./facade":190,"./identify":193,"is-email":50,"obj-case":38}],
+195: [function(require, module, exports) {
+
+var inherit = require('./utils').inherit;
+var Facade = require('./facade');
+var Track = require('./track');
+
+/**
+ * Expose `Page` facade
+ */
+
+module.exports = Page;
+
+/**
+ * Initialize new `Page` facade with `dictionary`.
+ *
+ * @param {Object} dictionary
+ *   @param {String} category
+ *   @param {String} name
+ *   @param {Object} traits
+ *   @param {Object} options
+ */
+
+function Page(dictionary){
+  Facade.call(this, dictionary);
+}
+
+/**
+ * Inherit from `Facade`
+ */
+
+inherit(Page, Facade);
+
+/**
+ * Get the facade's action.
+ *
+ * @return {String}
+ */
+
+Page.prototype.type =
+Page.prototype.action = function(){
+  return 'page';
+};
+
+/**
+ * Fields
+ */
+
+Page.prototype.category = Facade.field('category');
+Page.prototype.name = Facade.field('name');
+
+/**
+ * Proxies.
+ */
+
+Page.prototype.title = Facade.proxy('properties.title');
+Page.prototype.path = Facade.proxy('properties.path');
+Page.prototype.url = Facade.proxy('properties.url');
+
+/**
+ * Referrer.
+ */
+
+Page.prototype.referrer = function(){
+  return this.proxy('properties.referrer')
+    || this.proxy('context.referrer.url');
+};
+
+/**
+ * Get the page properties mixing `category` and `name`.
+ *
+ * @return {Object}
+ */
+
+Page.prototype.properties = function(){
+  var props = this.field('properties') || {};
+  var category = this.category();
+  var name = this.name();
+  if (category) props.category = category;
+  if (name) props.name = name;
+  return props;
+};
+
+/**
+ * Get the page fullName.
+ *
+ * @return {String}
+ */
+
+Page.prototype.fullName = function(){
+  var category = this.category();
+  var name = this.name();
+  return name && category
+    ? category + ' ' + name
+    : name;
+};
+
+/**
+ * Get event with `name`.
+ *
+ * @return {String}
+ */
+
+Page.prototype.event = function(name){
+  return name
+    ? 'Viewed ' + name + ' Page'
+    : 'Loaded a Page';
+};
+
+/**
+ * Convert this Page to a Track facade with `name`.
+ *
+ * @param {String} name
+ * @return {Track}
+ */
+
+Page.prototype.track = function(name){
+  var props = this.properties();
+  return new Track({
+    event: this.event(name),
+    timestamp: this.timestamp(),
+    context: this.context(),
+    properties: props
+  });
+};
+
+}, {"./utils":198,"./facade":190,"./track":194}],
+196: [function(require, module, exports) {
+
+var inherit = require('./utils').inherit;
+var Page = require('./page');
+var Track = require('./track');
+
+/**
+ * Expose `Screen` facade
+ */
+
+module.exports = Screen;
+
+/**
+ * Initialize new `Screen` facade with `dictionary`.
+ *
+ * @param {Object} dictionary
+ *   @param {String} category
+ *   @param {String} name
+ *   @param {Object} traits
+ *   @param {Object} options
+ */
+
+function Screen(dictionary){
+  Page.call(this, dictionary);
+}
+
+/**
+ * Inherit from `Page`
+ */
+
+inherit(Screen, Page);
+
+/**
+ * Get the facade's action.
+ *
+ * @return {String}
+ * @api public
+ */
+
+Screen.prototype.type =
+Screen.prototype.action = function(){
+  return 'screen';
+};
+
+/**
+ * Get event with `name`.
+ *
+ * @param {String} name
+ * @return {String}
+ * @api public
+ */
+
+Screen.prototype.event = function(name){
+  return name
+    ? 'Viewed ' + name + ' Screen'
+    : 'Loaded a Screen';
+};
+
+/**
+ * Convert this Screen.
+ *
+ * @param {String} name
+ * @return {Track}
+ * @api public
+ */
+
+Screen.prototype.track = function(name){
+  var props = this.properties();
+  return new Track({
+    event: this.event(name),
+    timestamp: this.timestamp(),
+    context: this.context(),
+    properties: props
+  });
+};
+
+}, {"./utils":198,"./page":195,"./track":194}],
+189: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -10182,7 +11366,7 @@ exports.stringify = function(obj){
   return pairs.join('&');
 };
 
-}, {"trim":52,"type":45}],
+}, {"trim":51,"type":43}],
 87: [function(require, module, exports) {
 
 /**
@@ -10231,7 +11415,7 @@ BugHerd.prototype.loaded = function() {
   return !!window._bugHerd;
 };
 
-}, {"analytics.js-integration":162,"next-tick":55}],
+}, {"analytics.js-integration":163,"next-tick":54}],
 88: [function(require, module, exports) {
 
 /**
@@ -10312,7 +11496,7 @@ Bugsnag.prototype.identify = function(identify) {
   extend(window.Bugsnag.metaData, identify.traits());
 };
 
-}, {"analytics.js-integration":162,"is":16,"extend":66}],
+}, {"analytics.js-integration":163,"is":16,"extend":65}],
 89: [function(require, module, exports) {
 
 /**
@@ -10417,7 +11601,7 @@ Chameleon.prototype.alias = function(alias) {
   window.chmln.alias({ from: fromId, to: alias.userId() });
 };
 
-}, {"analytics.js-integration":162,"each":4}],
+}, {"analytics.js-integration":163,"each":4}],
 90: [function(require, module, exports) {
 
 /**
@@ -10494,8 +11678,8 @@ Chartbeat.prototype.page = function(page) {
   window.pSUPERFLY.virtualPage(props.path, name || props.title);
 };
 
-}, {"defaults":189,"analytics.js-integration":162,"on-body":190}],
-189: [function(require, module, exports) {
+}, {"defaults":200,"analytics.js-integration":163,"on-body":201}],
+200: [function(require, module, exports) {
 /**
  * Expose `defaults`.
  */
@@ -10512,7 +11696,7 @@ function defaults (dest, defaults) {
 };
 
 }, {}],
-190: [function(require, module, exports) {
+201: [function(require, module, exports) {
 var each = require('each');
 
 
@@ -10566,7 +11750,7 @@ var interval = setInterval(function () {
 function call (callback) {
   callback(document.body);
 }
-}, {"each":173}],
+}, {"each":174}],
 91: [function(require, module, exports) {
 
 /**
@@ -10672,8 +11856,8 @@ ClickTale.prototype.track = function(track) {
   window.ClickTaleEvent(track.event());
 };
 
-}, {"load-date":191,"domify":183,"each":4,"analytics.js-integration":162,"is":16,"on-body":190,"use-https":164}],
-191: [function(require, module, exports) {
+}, {"load-date":202,"domify":183,"each":4,"analytics.js-integration":163,"is":16,"on-body":201,"use-https":165}],
+202: [function(require, module, exports) {
 
 
 /*
@@ -10792,7 +11976,7 @@ Clicky.prototype.track = function(track) {
   window.clicky.goal(track.event(), track.revenue());
 };
 
-}, {"facade":7,"extend":66,"analytics.js-integration":162,"is":16}],
+}, {"facade":188,"extend":65,"analytics.js-integration":163,"is":16}],
 93: [function(require, module, exports) {
 
 /**
@@ -10849,7 +12033,7 @@ Comscore.prototype.page = function() {
   window.COMSCORE.beacon(this.options);
 };
 
-}, {"analytics.js-integration":162,"use-https":164}],
+}, {"analytics.js-integration":163,"use-https":165}],
 94: [function(require, module, exports) {
 
 /**
@@ -10892,7 +12076,7 @@ CrazyEgg.prototype.loaded = function() {
   return !!window.CE2;
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 95: [function(require, module, exports) {
 
 /**
@@ -11078,8 +12262,8 @@ Curebit.prototype.completedOrder = function(track) {
   });
 };
 
-}, {"facade":7,"bind":53,"each":4,"analytics.js-integration":162,"to-iso-string":192,"global-queue":193,"throttle":194,"when":195}],
-192: [function(require, module, exports) {
+}, {"facade":188,"bind":52,"each":4,"analytics.js-integration":163,"to-iso-string":203,"global-queue":204,"throttle":205,"when":206}],
+203: [function(require, module, exports) {
 
 /**
  * Expose `toIsoString`.
@@ -11121,7 +12305,7 @@ function pad (number) {
   return n.length === 1 ? '0' + n : n;
 }
 }, {}],
-193: [function(require, module, exports) {
+204: [function(require, module, exports) {
 
 /**
  * Expose `generate`.
@@ -11151,7 +12335,7 @@ function generate (name, options) {
   };
 }
 }, {}],
-194: [function(require, module, exports) {
+205: [function(require, module, exports) {
 
 /**
  * Module exports.
@@ -11184,7 +12368,7 @@ function throttle (func, wait) {
 }
 
 }, {}],
-195: [function(require, module, exports) {
+206: [function(require, module, exports) {
 
 var callback = require('callback');
 
@@ -11326,8 +12510,8 @@ function convertDate(date) {
   return Math.floor(date.getTime() / 1000);
 }
 
-}, {"facade":7,"alias":196,"convert-dates":197,"analytics.js-integration":162}],
-196: [function(require, module, exports) {
+}, {"facade":188,"alias":207,"convert-dates":208,"analytics.js-integration":163}],
+207: [function(require, module, exports) {
 
 var type = require('type');
 
@@ -11390,8 +12574,8 @@ function aliasByFunction (obj, convert) {
   for (var key in obj) output[convert(key)] = obj[key];
   return output;
 }
-}, {"type":45,"clone":47}],
-197: [function(require, module, exports) {
+}, {"type":43,"clone":42}],
+208: [function(require, module, exports) {
 
 var is = require('is');
 
@@ -11500,7 +12684,7 @@ Drip.prototype.identify = function(identify) {
   push('identify', identify.traits());
 };
 
-}, {"analytics.js-integration":162,"is":16,"global-queue":193}],
+}, {"analytics.js-integration":163,"is":16,"global-queue":204}],
 98: [function(require, module, exports) {
 var integration = require('analytics.js-integration');
 var tick = require('next-tick');
@@ -11559,7 +12743,7 @@ Elevio.prototype.identify = function(identify) {
   window._elev.user = user;
 };
 
-}, {"analytics.js-integration":162,"next-tick":55}],
+}, {"analytics.js-integration":163,"next-tick":54}],
 99: [function(require, module, exports) {
 
 /**
@@ -11624,8 +12808,8 @@ Errorception.prototype.identify = function(identify) {
   extend(window._errs.meta, traits);
 };
 
-}, {"extend":66,"analytics.js-integration":162,"on-error":198,"global-queue":193}],
-198: [function(require, module, exports) {
+}, {"extend":65,"analytics.js-integration":163,"on-error":209,"global-queue":204}],
+209: [function(require, module, exports) {
 
 /**
  * Expose `onError`.
@@ -11799,7 +12983,7 @@ Evergage.prototype.track = function(track) {
   push('trackAction', track.event(), track.properties());
 };
 
-}, {"each":4,"analytics.js-integration":162,"global-queue":193}],
+}, {"each":4,"analytics.js-integration":163,"global-queue":204}],
 101: [function(require, module, exports) {
 'use strict';
 
@@ -11939,7 +13123,7 @@ Extole.prototype._createConversionTag = function(conversion) {
   return domify('<script type="extole/conversion">' + json.stringify(conversion) + '</script>');
 };
 
-}, {"bind":53,"domify":183,"each":4,"extend":66,"analytics.js-integration":162,"json":57}],
+}, {"bind":52,"domify":183,"each":4,"extend":65,"analytics.js-integration":163,"json":56}],
 102: [function(require, module, exports) {
 
 /**
@@ -12019,7 +13203,7 @@ Facebook.prototype.track = function(track) {
   });
 };
 
-}, {"each":4,"analytics.js-integration":162,"global-queue":193}],
+}, {"each":4,"analytics.js-integration":163,"global-queue":204}],
 103: [function(require, module, exports) {
 
 /**
@@ -12217,7 +13401,7 @@ function ecommerce(event, track, arr) {
   ].concat(arr || []));
 }
 
-}, {"facade":7,"each":4,"analytics.js-integration":162,"global-queue":193}],
+}, {"facade":188,"each":4,"analytics.js-integration":163,"global-queue":204}],
 104: [function(require, module, exports) {
 
 /**
@@ -12453,7 +13637,7 @@ function flatten(source) {
   return output;
 }
 
-}, {"bind":53,"each":4,"analytics.js-integration":162,"is":16}],
+}, {"bind":52,"each":4,"analytics.js-integration":163,"is":16}],
 105: [function(require, module, exports) {
 
 /**
@@ -12557,8 +13741,8 @@ function isInt(n) {
   return n === +n && n === (n | 0);
 }
 
-}, {"to-camel-case":199,"foldl":176,"analytics.js-integration":162,"is":16}],
-199: [function(require, module, exports) {
+}, {"to-camel-case":210,"foldl":177,"analytics.js-integration":163,"is":16}],
+210: [function(require, module, exports) {
 
 var toSpace = require('to-space-case');
 
@@ -12638,7 +13822,7 @@ Gauges.prototype.page = function() {
   push('track');
 };
 
-}, {"analytics.js-integration":162,"global-queue":193}],
+}, {"analytics.js-integration":163,"global-queue":204}],
 107: [function(require, module, exports) {
 
 /**
@@ -12691,7 +13875,7 @@ GetSatisfaction.prototype.loaded = function() {
   return !!window.GSFN;
 };
 
-}, {"analytics.js-integration":162,"on-body":190}],
+}, {"analytics.js-integration":163,"on-body":201}],
 108: [function(require, module, exports) {
 
 /**
@@ -13580,8 +14764,8 @@ function createProductTrack(track, properties) {
   return new Track({ properties: properties });
 }
 
-}, {"facade":7,"defaults":189,"obj-case":40,"each":4,"analytics.js-integration":162,"is":16,"object":18,"global-queue":193,"select":200,"use-https":164}],
-200: [function(require, module, exports) {
+}, {"facade":188,"defaults":200,"obj-case":38,"each":4,"analytics.js-integration":163,"is":16,"object":18,"global-queue":204,"select":211,"use-https":165}],
+211: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -13611,7 +14795,7 @@ module.exports = function(arr, fn){
   return ret;
 };
 
-}, {"to-function":72}],
+}, {"to-function":71}],
 109: [function(require, module, exports) {
 
 /**
@@ -13701,7 +14885,7 @@ GTM.prototype.track = function(track) {
   push(props);
 };
 
-}, {"analytics.js-integration":162,"global-queue":193}],
+}, {"analytics.js-integration":163,"global-queue":204}],
 110: [function(require, module, exports) {
 
 /**
@@ -13893,8 +15077,8 @@ function push() {
   window._gs.apply(null, arguments);
 }
 
-}, {"facade":7,"each":4,"analytics.js-integration":162,"omit":201,"pick":202}],
-201: [function(require, module, exports) {
+}, {"facade":188,"each":4,"analytics.js-integration":163,"omit":212,"pick":213}],
+212: [function(require, module, exports) {
 /**
  * Expose `omit`.
  */
@@ -13922,7 +15106,7 @@ function omit(keys, object){
   return ret;
 }
 }, {}],
-202: [function(require, module, exports) {
+213: [function(require, module, exports) {
 
 /**
  * Expose `pick`.
@@ -14037,7 +15221,7 @@ Heap.prototype.track = function(track) {
   window.heap.track(track.event(), track.properties());
 };
 
-}, {"analytics.js-integration":162,"each":4}],
+}, {"analytics.js-integration":163,"each":4}],
 112: [function(require, module, exports) {
 
 /**
@@ -14080,7 +15264,7 @@ Hellobar.prototype.loaded = function() {
   return !!(window._hbq && window._hbq.push !== Array.prototype.push);
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 113: [function(require, module, exports) {
 
 /**
@@ -14121,7 +15305,7 @@ HitTail.prototype.loaded = function() {
   return is.fn(window.htk);
 };
 
-}, {"analytics.js-integration":162,"is":16}],
+}, {"analytics.js-integration":163,"is":16}],
 114: [function(require, module, exports) {
 
 /**
@@ -14214,7 +15398,7 @@ function convertDates(properties) {
   return convert(properties, function(date) { return date.getTime(); });
 }
 
-}, {"convert-dates":197,"analytics.js-integration":162,"global-queue":193}],
+}, {"convert-dates":208,"analytics.js-integration":163,"global-queue":204}],
 115: [function(require, module, exports) {
 
 /**
@@ -14296,7 +15480,7 @@ Improvely.prototype.track = function(track) {
   window.improvely.goal(props);
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 116: [function(require, module, exports) {
 
 /**
@@ -14389,7 +15573,7 @@ InsideVault.prototype.track = function(track) {
   });
 };
 
-}, {"each":4,"analytics.js-integration":162,"global-queue":193}],
+}, {"each":4,"analytics.js-integration":163,"global-queue":204}],
 117: [function(require, module, exports) {
 
 /**
@@ -14476,7 +15660,7 @@ Inspectlet.prototype.page = function() {
   push('virtualPage');
 };
 
-}, {"analytics.js-integration":162,"global-queue":193}],
+}, {"analytics.js-integration":163,"global-queue":204}],
 118: [function(require, module, exports) {
 
 /**
@@ -14673,7 +15857,7 @@ function api() {
   window.Intercom.apply(window.Intercom, arguments);
 }
 
-}, {"alias":196,"convert-dates":197,"defaults":189,"obj-case":40,"analytics.js-integration":162,"is":16}],
+}, {"alias":207,"convert-dates":208,"defaults":200,"obj-case":38,"analytics.js-integration":163,"is":16}],
 119: [function(require, module, exports) {
 
 /**
@@ -14871,7 +16055,7 @@ Keen.prototype.addons = function(obj, msg) {
   };
 };
 
-}, {"analytics.js-integration":162,"clone":11}],
+}, {"analytics.js-integration":163,"clone":11}],
 120: [function(require, module, exports) {
 
 /**
@@ -14952,7 +16136,7 @@ Kenshoo.prototype.track = function(track) {
   window.k_trackevent(params, this.options.subdomain);
 };
 
-}, {"includes":68,"analytics.js-integration":162,"is":16}],
+}, {"includes":67,"analytics.js-integration":163,"is":16}],
 121: [function(require, module, exports) {
 
 /**
@@ -15138,7 +16322,7 @@ function prefix(event, properties) {
   return prefixed;
 }
 
-}, {"each":4,"analytics.js-integration":162,"is":16,"global-queue":193}],
+}, {"each":4,"analytics.js-integration":163,"is":16,"global-queue":204}],
 122: [function(require, module, exports) {
 
 /**
@@ -15236,7 +16420,7 @@ Klaviyo.prototype.track = function(track) {
   }));
 };
 
-}, {"analytics.js-integration":162,"global-queue":193,"next-tick":55}],
+}, {"analytics.js-integration":163,"global-queue":204,"next-tick":54}],
 123: [function(require, module, exports) {
 
 /**
@@ -15385,7 +16569,7 @@ function convert(traits) {
   return arr;
 }
 
-}, {"facade":7,"clone":11,"each":4,"analytics.js-integration":162,"next-tick":55,"when":195}],
+}, {"facade":188,"clone":11,"each":4,"analytics.js-integration":163,"next-tick":54,"when":206}],
 124: [function(require, module, exports) {
 
 /**
@@ -15458,7 +16642,7 @@ LuckyOrange.prototype.identify = function(identify) {
   window.__wtw_custom_user_data = traits;
 };
 
-}, {"facade":7,"analytics.js-integration":162,"use-https":164}],
+}, {"facade":188,"analytics.js-integration":163,"use-https":165}],
 125: [function(require, module, exports) {
 
 /**
@@ -15552,7 +16736,7 @@ Lytics.prototype.track = function(track) {
   window.jstag.send(props);
 };
 
-}, {"alias":196,"analytics.js-integration":162}],
+}, {"alias":207,"analytics.js-integration":163}],
 126: [function(require, module, exports) {
 
 /**
@@ -15786,8 +16970,8 @@ function lowercase(arr) {
   return ret;
 }
 
-}, {"alias":196,"convert-dates":197,"obj-case":40,"each":4,"includes":68,"analytics.js-integration":162,"is":16,"to-iso-string":192,"some":203}],
-203: [function(require, module, exports) {
+}, {"alias":207,"convert-dates":208,"obj-case":38,"each":4,"includes":67,"analytics.js-integration":163,"is":16,"to-iso-string":203,"some":214}],
+214: [function(require, module, exports) {
 
 /**
  * some
@@ -15907,7 +17091,7 @@ Mojn.prototype.track = function(track) {
   return conv;
 };
 
-}, {"bind":53,"analytics.js-integration":162,"is":16,"when":195}],
+}, {"bind":52,"analytics.js-integration":163,"is":16,"when":206}],
 128: [function(require, module, exports) {
 
 /**
@@ -16009,7 +17193,7 @@ function set(obj) {
   });
 }
 
-}, {"each":4,"analytics.js-integration":162,"global-queue":193}],
+}, {"each":4,"analytics.js-integration":163,"global-queue":204}],
 129: [function(require, module, exports) {
 
 /**
@@ -16075,7 +17259,7 @@ MouseStats.prototype.identify = function(identify) {
   });
 };
 
-}, {"each":4,"analytics.js-integration":162,"is":16,"use-https":164}],
+}, {"each":4,"analytics.js-integration":163,"is":16,"use-https":165}],
 130: [function(require, module, exports) {
 
 /**
@@ -16132,7 +17316,7 @@ Navilytics.prototype.track = function(track) {
   push('tagRecording', track.event());
 };
 
-}, {"analytics.js-integration":162,"global-queue":193}],
+}, {"analytics.js-integration":163,"global-queue":204}],
 131: [function(require, module, exports) {
 
 /**
@@ -16203,7 +17387,7 @@ Nudgespot.prototype.track = function(track) {
   window.nudgespot.track(track.event(), track.properties());
 };
 
-}, {"alias":196,"analytics.js-integration":162}],
+}, {"alias":207,"analytics.js-integration":163}],
 132: [function(require, module, exports) {
 
 /**
@@ -16413,7 +17597,7 @@ function api(action, value) {
   window.olark('api.' + action, value);
 }
 
-}, {"use-https":164,"analytics.js-integration":162,"next-tick":55}],
+}, {"use-https":165,"analytics.js-integration":163,"next-tick":54}],
 133: [function(require, module, exports) {
 
 /**
@@ -16593,7 +17777,7 @@ function getExperiments(options) {
   }, [], options.activeExperimentIds);
 }
 
-}, {"each":4,"foldl":176,"analytics.js-integration":162,"global-queue":193,"next-tick":55}],
+}, {"each":4,"foldl":177,"analytics.js-integration":163,"global-queue":204,"next-tick":54}],
 134: [function(require, module, exports) {
 
 /**
@@ -16706,7 +17890,7 @@ Outbound.prototype.alias = function(alias) {
   window.outbound.identify(alias.userId(), { previousId: alias.previousId() });
 };
 
-}, {"analytics.js-integration":162,"omit":201}],
+}, {"analytics.js-integration":163,"omit":212}],
 135: [function(require, module, exports) {
 
 /**
@@ -16810,7 +17994,7 @@ PerfectAudience.prototype.completedOrder = function(track) {
   push('track', track.event(), props);
 };
 
-}, {"analytics.js-integration":162,"global-queue":193}],
+}, {"analytics.js-integration":163,"global-queue":204}],
 136: [function(require, module, exports) {
 
 /**
@@ -16856,7 +18040,7 @@ Pingdom.prototype.loaded = function() {
   return !!(window._prum && window._prum.push !== Array.prototype.push);
 };
 
-}, {"load-date":191,"analytics.js-integration":162,"global-queue":193}],
+}, {"load-date":202,"analytics.js-integration":163,"global-queue":204}],
 137: [function(require, module, exports) {
 
 /**
@@ -16952,7 +18136,7 @@ Piwik.prototype.track = function(track) {
   push('trackEvent', category, action, name, value);
 };
 
-}, {"each":4,"analytics.js-integration":162,"is":16,"global-queue":193}],
+}, {"each":4,"analytics.js-integration":163,"is":16,"global-queue":204}],
 138: [function(require, module, exports) {
 
 /**
@@ -17069,7 +18253,7 @@ function convertDate(date) {
   return Math.floor(date / 1000);
 }
 
-}, {"convert-dates":197,"analytics.js-integration":162,"global-queue":193}],
+}, {"convert-dates":208,"analytics.js-integration":163,"global-queue":204}],
 139: [function(require, module, exports) {
 
 /**
@@ -17156,7 +18340,7 @@ Qualaroo.prototype.track = function(track) {
   this.identify(new Identify({ traits: traits }));
 };
 
-}, {"analytics.js-integration":162,"global-queue":193,"facade":7,"bind":53,"when":195}],
+}, {"analytics.js-integration":163,"global-queue":204,"facade":188,"bind":52,"when":206}],
 140: [function(require, module, exports) {
 
 /**
@@ -17364,8 +18548,8 @@ Quantcast.prototype._labels = function(type) {
   return [type, ret].join('.');
 };
 
-}, {"analytics.js-integration":162,"global-queue":193,"reduce":204,"use-https":164}],
-204: [function(require, module, exports) {
+}, {"analytics.js-integration":163,"global-queue":204,"reduce":215,"use-https":165}],
+215: [function(require, module, exports) {
 
 /**
  * Reduce `arr` with `fn`.
@@ -17377,7 +18561,7 @@ Quantcast.prototype._labels = function(type) {
  * TODO: combatible error handling?
  */
 
-module.exports = function(arr, fn, initial){  
+module.exports = function(arr, fn, initial){
   var idx = 0;
   var len = arr.length;
   var curr = arguments.length == 3
@@ -17387,7 +18571,7 @@ module.exports = function(arr, fn, initial){
   while (idx < len) {
     curr = fn.call(null, curr, arr[idx], ++idx, arr);
   }
-  
+
   return curr;
 };
 }, {}],
@@ -17475,7 +18659,7 @@ RollbarIntegration.prototype.identify = function(identify) {
   rollbar.configure({ payload: { person: person } });
 };
 
-}, {"extend":66,"analytics.js-integration":162,"is":16}],
+}, {"extend":65,"analytics.js-integration":163,"is":16}],
 142: [function(require, module, exports) {
 
 var integration = require('analytics.js-integration');
@@ -17548,7 +18732,7 @@ Route.prototype.track = function(track) {
   window._route.track(track.event());
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 143: [function(require, module, exports) {
 
 /**
@@ -17661,7 +18845,7 @@ SaaSquatch.prototype.group = function(group) {
   this.load();
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 144: [function(require, module, exports) {
 
 /**
@@ -17737,7 +18921,7 @@ SatisMeter.prototype.identify = function(identify) {
   window.satismeter(traits);
 };
 
-}, {"analytics.js-integration":162,"when":195}],
+}, {"analytics.js-integration":163,"when":206}],
 145: [function(require, module, exports) {
 
 /**
@@ -18013,29 +19197,29 @@ function scheme() {
 
 function noop() {}
 
-}, {"ad-params":205,"clone":11,"cookie":56,"extend":66,"analytics.js-integration":162,"segmentio/json@1.0.0":57,"store":206,"protocol":207,"send-json":208,"top-domain":186,"utm-params":209,"uuid":75}],
-205: [function(require, module, exports) {
+}, {"ad-params":216,"clone":11,"cookie":55,"extend":65,"analytics.js-integration":163,"segmentio/json@1.0.0":56,"store":217,"protocol":218,"send-json":219,"top-domain":186,"utm-params":220,"uuid":75}],
+216: [function(require, module, exports) {
 /**
  * Module dependencies.
  */
- 
+
 var parse = require('querystring').parse;
- 
+
 /**
  * Expose `ads`
  */
- 
+
 module.exports = ads;
- 
+
 /**
  * All the ad query params we look for.
  */
- 
+
 var QUERYIDS = {
   'btid' : 'dataxu',
   'urid' : 'millennial-media'
 };
- 
+
 /**
  * Get all ads info from the given `querystring`
  *
@@ -18043,7 +19227,7 @@ var QUERYIDS = {
  * @return {Object}
  * @api private
  */
- 
+
 function ads(query){
   var params = parse(query);
   for (var key in params) {
@@ -18057,8 +19241,8 @@ function ads(query){
     }
   }
 }
-}, {"querystring":210}],
-210: [function(require, module, exports) {
+}, {"querystring":221}],
+221: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -18135,8 +19319,8 @@ exports.stringify = function(obj){
   return pairs.join('&');
 };
 
-}, {"trim":52,"type":45}],
-206: [function(require, module, exports) {
+}, {"trim":51,"type":43}],
+217: [function(require, module, exports) {
 
 /**
  * dependencies.
@@ -18231,12 +19415,12 @@ function all(){
   return ret;
 }
 
-}, {"unserialize":211,"each":173}],
-211: [function(require, module, exports) {
+}, {"unserialize":222,"each":174}],
+222: [function(require, module, exports) {
 
 /**
  * Unserialize the given "stringified" javascript.
- * 
+ *
  * @param {String} val
  * @return {Mixed}
  */
@@ -18250,7 +19434,7 @@ module.exports = function(val){
 };
 
 }, {}],
-207: [function(require, module, exports) {
+218: [function(require, module, exports) {
 
 /**
  * Convenience alias
@@ -18333,7 +19517,7 @@ function set (protocol) {
 }
 
 }, {}],
-208: [function(require, module, exports) {
+219: [function(require, module, exports) {
 /**
  * Module dependencies.
  */
@@ -18432,8 +19616,8 @@ function base64(url, obj, _, fn){
   });
 }
 
-}, {"base64-encode":212,"has-cors":213,"jsonp":214,"json":57}],
-212: [function(require, module, exports) {
+}, {"base64-encode":223,"has-cors":224,"jsonp":225,"json":56}],
+223: [function(require, module, exports) {
 var utf8Encode = require('utf8-encode');
 var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
@@ -18470,8 +19654,8 @@ function encode(input) {
 
     return output;
 }
-}, {"utf8-encode":215}],
-215: [function(require, module, exports) {
+}, {"utf8-encode":226}],
+226: [function(require, module, exports) {
 module.exports = encode;
 
 function encode(string) {
@@ -18500,7 +19684,7 @@ function encode(string) {
     return utftext;
 }
 }, {}],
-213: [function(require, module, exports) {
+224: [function(require, module, exports) {
 
 /**
  * Module exports.
@@ -18520,7 +19704,7 @@ try {
 }
 
 }, {}],
-214: [function(require, module, exports) {
+225: [function(require, module, exports) {
 /**
  * Module dependencies
  */
@@ -18607,7 +19791,7 @@ function jsonp(url, opts, fn){
 }
 
 }, {"debug":13}],
-209: [function(require, module, exports) {
+220: [function(require, module, exports) {
 
 /**
  * Module dependencies.
@@ -18647,7 +19831,7 @@ function utm(query){
   return ret;
 }
 
-}, {"querystring":210}],
+}, {"querystring":221}],
 146: [function(require, module, exports) {
 
 /**
@@ -18704,7 +19888,7 @@ Sentry.prototype.identify = function(identify) {
   window.Raven.setUser(identify.traits());
 };
 
-}, {"analytics.js-integration":162,"is":16}],
+}, {"analytics.js-integration":163,"is":16}],
 147: [function(require, module, exports) {
 
 /**
@@ -18820,7 +20004,7 @@ SnapEngage.prototype.attachListeners = function() {
   });
 };
 
-}, {"analytics.js-integration":162,"is":16,"next-tick":55}],
+}, {"analytics.js-integration":163,"is":16,"next-tick":54}],
 148: [function(require, module, exports) {
 
 /**
@@ -18868,7 +20052,7 @@ Spinnakr.prototype.loaded = function() {
   return !!window._spinnakr;
 };
 
-}, {"bind":53,"analytics.js-integration":162,"when":195}],
+}, {"bind":52,"analytics.js-integration":163,"when":206}],
 149: [function(require, module, exports) {
 /**
  * Module dependencies.
@@ -18929,7 +20113,7 @@ SupportHero.prototype.identify = function(identify) {
   }
 };
 
-}, {"analytics.js-integration":162}],
+}, {"analytics.js-integration":163}],
 150: [function(require, module, exports) {
 
 /**
@@ -19059,7 +20243,7 @@ Taplytics.prototype.reset = function() {
   push('reset');
 };
 
-}, {"analytics.js-integration":162,"is":16,"keys":71,"global-queue":193}],
+}, {"analytics.js-integration":163,"is":16,"keys":70,"global-queue":204}],
 151: [function(require, module, exports) {
 
 /**
@@ -19147,7 +20331,7 @@ Tapstream.prototype.track = function(track) {
   push('fireHit', slug(track.event()), [props.url]);
 };
 
-}, {"analytics.js-integration":162,"global-queue":193,"slug":168}],
+}, {"analytics.js-integration":163,"global-queue":204,"slug":169}],
 152: [function(require, module, exports) {
 
 /**
@@ -19311,7 +20495,7 @@ Trakio.prototype.alias = function(alias) {
   }
 };
 
-}, {"alias":196,"analytics.js-integration":162}],
+}, {"alias":207,"analytics.js-integration":163}],
 153: [function(require, module, exports) {
 
 /**
@@ -19368,7 +20552,7 @@ TwitterAds.prototype.track = function(track) {
   });
 };
 
-}, {"each":4,"analytics.js-integration":162}],
+}, {"each":4,"analytics.js-integration":163}],
 154: [function(require, module, exports) {
 
 /**
@@ -19486,7 +20670,7 @@ Userlike.prototype.attachListeners = function() {
   };
 };
 
-}, {"facade":7,"clone":11,"analytics.js-integration":162}],
+}, {"facade":188,"clone":11,"analytics.js-integration":163}],
 155: [function(require, module, exports) {
 
 /**
@@ -19687,8 +20871,8 @@ function showClassicWidget(type, options) {
   push(type, 'classic_widget', options);
 }
 
-}, {"alias":196,"convert-dates":197,"analytics.js-integration":162,"global-queue":193,"to-unix-timestamp":216}],
-216: [function(require, module, exports) {
+}, {"alias":207,"convert-dates":208,"analytics.js-integration":163,"global-queue":204,"to-unix-timestamp":227}],
+227: [function(require, module, exports) {
 
 /**
  * Expose `toUnixTimestamp`.
@@ -19829,7 +21013,7 @@ Vero.prototype.alias = function(alias) {
   }
 };
 
-}, {"component/cookie":56,"analytics.js-integration":162,"global-queue":193}],
+}, {"component/cookie":55,"analytics.js-integration":163,"global-queue":204}],
 157: [function(require, module, exports) {
 
 /**
@@ -20004,7 +21188,7 @@ function variation(id) {
   return variationId ? experiment.comb_n[variationId] : null;
 }
 
-}, {"each":4,"analytics.js-integration":162,"next-tick":55}],
+}, {"each":4,"analytics.js-integration":163,"next-tick":54}],
 158: [function(require, module, exports) {
 
 /**
@@ -20052,7 +21236,7 @@ WebEngage.prototype.loaded = function() {
   return !!window.webengage;
 };
 
-}, {"analytics.js-integration":162,"use-https":164}],
+}, {"analytics.js-integration":163,"use-https":165}],
 159: [function(require, module, exports) {
 
 /**
@@ -20151,7 +21335,7 @@ Woopra.prototype.track = function(track) {
   window.woopra.track(track.event(), track.properties());
 };
 
-}, {"each":4,"analytics.js-integration":162,"to-snake-case":163}],
+}, {"each":4,"analytics.js-integration":163,"to-snake-case":164}],
 160: [function(require, module, exports) {
 
 /**
@@ -20253,7 +21437,7 @@ Wootric.prototype.page = function(page) {
   });
 };
 
-}, {"analytics.js-integration":162,"omit":201}],
+}, {"analytics.js-integration":163,"omit":212}],
 161: [function(require, module, exports) {
 
 /**
@@ -20332,7 +21516,57 @@ function push(callback) {
   window.yandex_metrika_callbacks.push(callback);
 }
 
-}, {"bind":53,"analytics.js-integration":162,"next-tick":55,"when":195}],
+}, {"bind":52,"analytics.js-integration":163,"next-tick":54,"when":206}],
+162: [function(require, module, exports) {
+
+/**
+ * Module dependencies.
+ */
+
+var integration = require('analytics.js-integration');
+var push = require('global-queue')('SumoMe');
+
+/**
+ * Expose `SumoMe` integration.
+ */
+
+
+module.exports = exports = function(analytics) {
+  analytics.addIntegration(SumoMe);
+};
+var SumoMe = exports.Integration = integration('SumoMe')
+  .assumesPageview()
+  .global('sumo')
+  .option('siteId', '')
+  .tag('<script src="//load.sumome.com/" data-sumo-site-id={{siteId}}>')
+  .readyOnInitialize();
+
+SumoMe.on('construct', function(integration) {
+});
+
+/**
+ * Initialize.
+ *
+ * @api public
+ */
+
+SumoMe.prototype.initialize = function() {
+  var options = this.options;
+  this.load(this.ready);
+};
+
+/**
+ * Loaded?
+ *
+ * @api private
+ * @return {boolean}
+ */
+
+SumoMe.prototype.loaded = function() {
+  return !!(window.sumo);
+};
+
+}, {"analytics.js-integration":163,"global-queue":204}],
 5: [function(require, module, exports) {
 module.exports = {
   "name": "analytics",

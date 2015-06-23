@@ -104,7 +104,7 @@ test: node_modules lint $(BUILD)
 .DEFAULT_GOAL = test
 
 # Test locally in the browser.
-test-browser: node_modules lint $(BUILD)
+test-browser: node_modules $(BUILD)
 	@$(DUOT) $(DUOT_ARGS) browser
 .PHONY: test-browser
 
